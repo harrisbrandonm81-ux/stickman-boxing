@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stickman Boxing Arena</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d1220;
+      --panel: #1a2238;
+      --accent: #2dd4bf;
+      --danger: #f43f5e;
+      --text: #dbeafe;
+      --muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #16213f, var(--bg));
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .game-shell {
+      width: min(960px, 100%);
+      display: grid;
+      gap: 16px;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      background: rgba(26, 34, 56, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+
+    .controls,
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    kbd {
+      background: #0b1324;
+      border: 1px solid #334155;
+      border-bottom-width: 3px;
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.78rem;
+      font-weight: 700;
+      min-width: 24px;
+      text-align: center;
+      padding: 3px 7px;
+    }
+
+    select,
+    button {
+      background: #0b1324;
+      color: var(--text);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.9rem;
+    }
+
+    button {
+      cursor: pointer;
+      border-color: #1d4ed8;
+      background: linear-gradient(180deg, #1d4ed8, #1e3a8a);
+    }
+
+    button:hover {
+      filter: brightness(1.1);
+    }
+
+    .arena-wrap {
+      background: rgba(26, 34, 56, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 65%, #081018 100%);
+      display: block;
+    }
+
+    .log {
+      color: var(--accent);
+      font-weight: 600;
+      min-height: 1.4rem;
+      text-align: right;
+    }
+
+    .hp-bar {
+      height: 10px;
+      width: 190px;
+      background: #111827;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid #334155;
+      position: relative;
+    }
+
+    .hp-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 100%;
+      background: linear-gradient(90deg, #22c55e, #facc15, #ef4444);
+      transition: width 120ms linear;
+    }
+  </style>
+</head>
+<body>
+  <main class="game-shell">
+    <section class="hud">
+      <div class="controls">
+        <span><strong>Move:</strong> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>
+        <span><strong>Punch:</strong> <kbd>F</kbd></span>
+        <span><strong>Kick:</strong> <kbd>E</kbd></span>
+        <span><strong>Ability:</strong> <kbd>G</kbd></span>
+        <label>
+          <strong>Stickman:</strong>
+          <select id="character-select"></select>
+        </label>
+        <button id="respawn-btn" type="button">Respawn</button>
+      </div>
+      <div class="stats">
+        <span>You</span>
+        <div class="hp-bar"><div id="player-hp" class="hp-fill"></div></div>
+        <span>Enemy</span>
+        <div class="hp-bar"><div id="enemy-hp" class="hp-fill"></div></div>
+      </div>
+    </section>
+
+    <section class="arena-wrap">
+      <canvas id="arena" width="920" height="480" aria-label="Stickman fighting arena"></canvas>
+    </section>
+
+    <div id="log" class="log">Pick a fighter and start swinging.</div>
+  </main>
+
+  <script>
+    const canvas = document.getElementById('arena');
+    const ctx = canvas.getContext('2d');
+    const characterSelect = document.getElementById('character-select');
+    const logEl = document.getElementById('log');
+    const playerHpBar = document.getElementById('player-hp');
+    const enemyHpBar = document.getElementById('enemy-hp');
+    const respawnBtn = document.getElementById('respawn-btn');
+
+    const characters = [
+      {
+        name: 'Blaze',
+        color: '#f97316',
+        ability: {
+          name: 'Fire Dash',
+          cooldown: 1800,
+          effect(player, enemy) {
+            player.x = Math.min(canvas.width - 65, player.x + 130);
+            if (distance(player, enemy) < 110) {
+              hit(enemy, 24, `${player.name} scorched the enemy with Fire Dash!`);
+            } else {
+              say(`${player.name} rushed forward with Fire Dash.`);
+            }
+          }
+        }
+      },
+      {
+        name: 'Volt',
+        color: '#22d3ee',
+        ability: {
+          name: 'Shock Wave',
+          cooldown: 2200,
+          effect(player, enemy) {
+            if (distance(player, enemy) < 190) {
+              hit(enemy, 30, `${player.name} zapped the enemy with Shock Wave!`);
+            } else {
+              say(`${player.name} used Shock Wave, but it missed.`);
+            }
+          }
+        }
+      },
+      {
+        name: 'Stone',
+        color: '#a3a3a3',
+        ability: {
+          name: 'Iron Guard',
+          cooldown: 2600,
+          effect(player) {
+            player.guardUntil = performance.now() + 1500;
+            say(`${player.name} activated Iron Guard for 1.5s.`);
+          }
+        }
+      }
+    ];
+
+    const keys = new Set();
+    let player;
+    let enemy;
+
+    function createFighter(name, x, color) {
+      return {
+        name,
+        x,
+        y: 360,
+        vx: 0,
+        vy: 0,
+        speed: 3.1,
+        hp: 100,
+        maxHp: 100,
+        facing: 1,
+        color,
+        attackUntil: 0,
+        attackType: '',
+        abilityReadyAt: 0,
+        guardUntil: 0,
+        jumpStrength: 10,
+      };
+    }
+
+    function resetGame() {
+      const selected = characters[characterSelect.selectedIndex] || characters[0];
+      player = createFighter(selected.name, 160, selected.color);
+      player.profile = selected;
+      enemy = createFighter('CPU Brawler', 700, '#f43f5e');
+      enemy.speed = 2.2;
+      enemy.cooldownAt = 0;
+      say(`${player.name} enters the arena! Ability: ${selected.ability.name}`);
+      updateHpUI();
+    }
+
+    function distance(a, b) {
+      return Math.abs(a.x - b.x);
+    }
+
+    function say(text) {
+      logEl.textContent = text;
+    }
+
+    function hit(target, amount, text) {
+      const guarding = performance.now() < target.guardUntil;
+      const damage = guarding ? Math.ceil(amount * 0.35) : amount;
+      target.hp = Math.max(0, target.hp - damage);
+      say(guarding ? `${text} (guard reduced damage)` : text);
+      updateHpUI();
+    }
+
+    function updateHpUI() {
+      playerHpBar.style.width = `${(player.hp / player.maxHp) * 100}%`;
+      enemyHpBar.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
+    }
+
+    function doAttack(type) {
+      if (player.hp <= 0 || enemy.hp <= 0) return;
+      const now = performance.now();
+      if (now < player.attackUntil) return;
+      player.attackType = type;
+      player.attackUntil = now + (type === 'kick' ? 380 : 260);
+      const range = type === 'kick' ? 95 : 75;
+      const dmg = type === 'kick' ? 18 : 12;
+
+      if (distance(player, enemy) <= range) {
+        hit(enemy, dmg, `${player.name} landed a ${type}!`);
+      } else {
+        say(`${player.name} ${type} missed.`);
+      }
+    }
+
+    function doAbility() {
+      if (player.hp <= 0 || enemy.hp <= 0) return;
+      const now = performance.now();
+      if (now < player.abilityReadyAt) {
+        const wait = ((player.abilityReadyAt - now) / 1000).toFixed(1);
+        say(`Ability cooling down (${wait}s)`);
+        return;
+      }
+
+      player.profile.ability.effect(player, enemy);
+      player.abilityReadyAt = now + player.profile.ability.cooldown;
+      updateHpUI();
+    }
+
+    function updatePlayer() {
+      player.vx = 0;
+      if (keys.has('a')) player.vx -= player.speed;
+      if (keys.has('d')) player.vx += player.speed;
+
+      if (keys.has('w') && player.y >= 360) {
+        player.vy = -player.jumpStrength;
+      }
+
+      if (keys.has('s') && player.y < 360) {
+        player.vy += 0.55;
+      }
+
+      player.x += player.vx;
+      player.y += player.vy;
+      player.vy += 0.5;
+
+      if (player.y > 360) {
+        player.y = 360;
+        player.vy = 0;
+      }
+
+      player.x = Math.max(40, Math.min(canvas.width - 40, player.x));
+      if (player.vx !== 0) player.facing = Math.sign(player.vx);
+    }
+
+    function updateEnemy() {
+      if (enemy.hp <= 0) return;
+      const now = performance.now();
+      const gap = player.x - enemy.x;
+      enemy.x += Math.sign(gap) * Math.min(Math.abs(gap), enemy.speed);
+      enemy.facing = Math.sign(gap) || -1;
+
+      if (now > enemy.cooldownAt && distance(player, enemy) < 85 && player.hp > 0) {
+        const roll = Math.random();
+        if (roll > 0.55) {
+          hit(player, 11, 'CPU landed a jab.');
+        } else if (roll > 0.2) {
+          hit(player, 16, 'CPU smacked you with a kick.');
+        } else {
+          enemy.guardUntil = now + 800;
+          say('CPU raised a guard.');
+        }
+        enemy.cooldownAt = now + 750;
+      }
+    }
+
+    function drawGround() {
+      ctx.fillStyle = '#0b1324';
+      ctx.fillRect(0, 390, canvas.width, 90);
+
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < canvas.width; i += 40) {
+        ctx.beginPath();
+        ctx.moveTo(i, 392);
+        ctx.lineTo(i + 18, 480);
+        ctx.stroke();
+      }
+    }
+
+    function drawStickman(f) {
+      const headR = 16;
+      const isAttacking = performance.now() < f.attackUntil;
+      const armSwing = isAttacking ? (f.attackType === 'kick' ? 25 : 40) : 12;
+      const legSwing = isAttacking && f.attackType === 'kick' ? 35 : 12;
+      const guard = performance.now() < f.guardUntil;
+
+      ctx.save();
+      ctx.translate(f.x, f.y);
+      ctx.scale(f.facing || 1, 1);
+      ctx.strokeStyle = f.color;
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+
+      ctx.beginPath();
+      ctx.arc(0, -66, headR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, -50);
+      ctx.lineTo(0, -10);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, -40);
+      ctx.lineTo(guard ? 8 : 20 + armSwing, guard ? -56 : -24);
+      ctx.moveTo(0, -40);
+      ctx.lineTo(-20, -18);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, -10);
+      ctx.lineTo(legSwing, 24);
+      ctx.moveTo(0, -10);
+      ctx.lineTo(-16, 24);
+      ctx.stroke();
+
+      ctx.restore();
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(f.name, f.x, f.y - 95);
+    }
+
+    function drawWinner() {
+      if (player.hp > 0 && enemy.hp > 0) return;
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.74)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 52px sans-serif';
+      ctx.textAlign = 'center';
+      const won = player.hp > 0;
+      ctx.fillText(won ? 'YOU WIN' : 'YOU LOSE', canvas.width / 2, 210);
+      ctx.font = '22px sans-serif';
+      ctx.fillText('Press Respawn to fight again.', canvas.width / 2, 260);
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGround();
+      updatePlayer();
+      updateEnemy();
+      drawStickman(player);
+      drawStickman(enemy);
+      drawWinner();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function initCharacterSelect() {
+      characterSelect.innerHTML = '';
+      for (const fighter of characters) {
+        const option = document.createElement('option');
+        option.value = fighter.name;
+        option.textContent = `${fighter.name} (${fighter.ability.name})`;
+        characterSelect.append(option);
+      }
+    }
+
+    window.addEventListener('keydown', (event) => {
+      const key = event.key.toLowerCase();
+      if (['w', 'a', 's', 'd', 'e', 'f', 'g'].includes(key)) event.preventDefault();
+      keys.add(key);
+
+      if (key === 'f') doAttack('punch');
+      if (key === 'e') doAttack('kick');
+      if (key === 'g') doAbility();
+    });
+
+    window.addEventListener('keyup', (event) => {
+      keys.delete(event.key.toLowerCase());
+    });
+
+    characterSelect.addEventListener('change', resetGame);
+    respawnBtn.addEventListener('click', resetGame);
+
+    initCharacterSelect();
+    resetGame();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
