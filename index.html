@@ -86,10 +86,6 @@
       background: linear-gradient(180deg, #1d4ed8, #1e3a8a);
     }
 
-    button:hover {
-      filter: brightness(1.1);
-    }
-
     .arena-wrap {
       background: rgba(26, 34, 56, 0.85);
       border: 1px solid rgba(148, 163, 184, 0.25);
@@ -169,20 +165,44 @@
     const enemyHpBar = document.getElementById('enemy-hp');
     const respawnBtn = document.getElementById('respawn-btn');
 
+    const fx = [];
+    const keys = new Set();
+    const FLOOR_Y = 360;
+
+    let player;
+    let enemy;
+    let lastTs = performance.now();
+
     const characters = [
       {
         name: 'Blaze',
         color: '#f97316',
         ability: {
           name: 'Fire Dash',
-          cooldown: 1800,
-          effect(player, enemy) {
-            player.x = Math.min(canvas.width - 65, player.x + 130);
-            if (distance(player, enemy) < 110) {
-              hit(enemy, 24, `${player.name} scorched the enemy with Fire Dash!`);
+          cooldown: 1600,
+          effect(self, target) {
+            const dashDir = self.facing || 1;
+            self.abilityDashUntil = performance.now() + 220;
+            self.abilityDashSpeed = 11 * dashDir;
+            self.invulnerableUntil = performance.now() + 220;
+
+            const inFront = (target.x - self.x) * dashDir > -12;
+            if (inFront && distance(self, target) < 170) {
+              hit(target, 28, `${self.name} landed Fire Dash!`, self);
+              target.knockback = 6 * dashDir;
             } else {
-              say(`${player.name} rushed forward with Fire Dash.`);
+              say(`${self.name} dashed forward in flames.`);
             }
+
+            fx.push({
+              kind: 'ring',
+              x: self.x,
+              y: self.y - 35,
+              color: '#fb923c',
+              life: 260,
+              maxLife: 260,
+              radius: 16
+            });
           }
         }
       },
@@ -190,14 +210,27 @@
         name: 'Volt',
         color: '#22d3ee',
         ability: {
-          name: 'Shock Wave',
-          cooldown: 2200,
-          effect(player, enemy) {
-            if (distance(player, enemy) < 190) {
-              hit(enemy, 30, `${player.name} zapped the enemy with Shock Wave!`);
-            } else {
-              say(`${player.name} used Shock Wave, but it missed.`);
-            }
+          name: 'Shock Bolt',
+          cooldown: 1900,
+          effect(self, target) {
+            const dir = self.facing || 1;
+            self.castUntil = performance.now() + 280;
+            fx.push({
+              kind: 'projectile',
+              owner: self,
+              x: self.x + 28 * dir,
+              y: self.y - 38,
+              vx: 8.8 * dir,
+              life: 900,
+              maxLife: 900,
+              radius: 8,
+              color: '#67e8f9',
+              onHit(victim) {
+                hit(victim, 24, `${self.name}'s Shock Bolt stunned the enemy!`, self);
+                victim.stunnedUntil = performance.now() + 700;
+              }
+            });
+            say(`${self.name} fired Shock Bolt.`);
           }
         }
       },
@@ -205,27 +238,46 @@
         name: 'Stone',
         color: '#a3a3a3',
         ability: {
-          name: 'Iron Guard',
-          cooldown: 2600,
-          effect(player) {
-            player.guardUntil = performance.now() + 1500;
-            say(`${player.name} activated Iron Guard for 1.5s.`);
+          name: 'Quake Slam',
+          cooldown: 2400,
+          effect(self, target) {
+            self.castUntil = performance.now() + 340;
+            self.guardUntil = performance.now() + 900;
+            const close = distance(self, target) < 200;
+            const dmg = close ? 30 : 0;
+            if (dmg) {
+              hit(target, dmg, `${self.name} smashed the ground with Quake Slam!`, self);
+              target.knockback = 4.5 * Math.sign(target.x - self.x || 1);
+            } else {
+              say(`${self.name} used Quake Slam, but it was out of range.`);
+            }
+
+            fx.push({
+              kind: 'wave',
+              x: self.x,
+              y: FLOOR_Y + 18,
+              life: 380,
+              maxLife: 380,
+              radius: 12,
+              color: '#cbd5e1'
+            });
           }
         }
       }
     ];
 
-    const keys = new Set();
-    let player;
-    let enemy;
+    function say(text) {
+      logEl.textContent = text;
+    }
 
     function createFighter(name, x, color) {
       return {
         name,
         x,
-        y: 360,
+        y: FLOOR_Y,
         vx: 0,
         vy: 0,
+        knockback: 0,
         speed: 3.1,
         hp: 100,
         maxHp: 100,
@@ -233,9 +285,17 @@
         color,
         attackUntil: 0,
         attackType: '',
+        attackHitDone: false,
         abilityReadyAt: 0,
+        abilityDashUntil: 0,
+        abilityDashSpeed: 0,
+        castUntil: 0,
         guardUntil: 0,
+        stunnedUntil: 0,
+        invulnerableUntil: 0,
         jumpStrength: 10,
+        walkCycle: 0,
+        cooldownAt: 0
       };
     }
 
@@ -243,27 +303,14 @@
       const selected = characters[characterSelect.selectedIndex] || characters[0];
       player = createFighter(selected.name, 160, selected.color);
       player.profile = selected;
+
       enemy = createFighter('CPU Brawler', 700, '#f43f5e');
-      enemy.speed = 2.2;
-      enemy.cooldownAt = 0;
-      say(`${player.name} enters the arena! Ability: ${selected.ability.name}`);
+      enemy.speed = 2.25;
+      enemy.profile = { ability: { name: 'Counter Guard' } };
+
+      fx.length = 0;
       updateHpUI();
-    }
-
-    function distance(a, b) {
-      return Math.abs(a.x - b.x);
-    }
-
-    function say(text) {
-      logEl.textContent = text;
-    }
-
-    function hit(target, amount, text) {
-      const guarding = performance.now() < target.guardUntil;
-      const damage = guarding ? Math.ceil(amount * 0.35) : amount;
-      target.hp = Math.max(0, target.hp - damage);
-      say(guarding ? `${text} (guard reduced damage)` : text);
-      updateHpUI();
+      say(`${player.name} ready. Ability: ${selected.ability.name}`);
     }
 
     function updateHpUI() {
@@ -271,20 +318,32 @@
       enemyHpBar.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
     }
 
-    function doAttack(type) {
-      if (player.hp <= 0 || enemy.hp <= 0) return;
-      const now = performance.now();
-      if (now < player.attackUntil) return;
-      player.attackType = type;
-      player.attackUntil = now + (type === 'kick' ? 380 : 260);
-      const range = type === 'kick' ? 95 : 75;
-      const dmg = type === 'kick' ? 18 : 12;
+    function distance(a, b) {
+      return Math.abs(a.x - b.x);
+    }
 
-      if (distance(player, enemy) <= range) {
-        hit(enemy, dmg, `${player.name} landed a ${type}!`);
-      } else {
-        say(`${player.name} ${type} missed.`);
+    function hit(target, amount, text, attacker) {
+      if (performance.now() < target.invulnerableUntil || target.hp <= 0) return;
+      const guarding = performance.now() < target.guardUntil;
+      const actual = guarding ? Math.ceil(amount * 0.4) : amount;
+      target.hp = Math.max(0, target.hp - actual);
+
+      if (attacker && target.hp > 0) {
+        target.facing = Math.sign(target.x - attacker.x) || target.facing;
       }
+
+      say(guarding ? `${text} (guard reduced damage)` : text);
+      updateHpUI();
+    }
+
+    function startAttack(fighter, type) {
+      if (fighter.hp <= 0) return;
+      const now = performance.now();
+      if (now < fighter.attackUntil || now < fighter.stunnedUntil || now < fighter.castUntil) return;
+
+      fighter.attackType = type;
+      fighter.attackHitDone = false;
+      fighter.attackUntil = now + (type === 'kick' ? 420 : 320);
     }
 
     function doAbility() {
@@ -301,50 +360,121 @@
       updateHpUI();
     }
 
-    function updatePlayer() {
+    function resolveAttackHit(attacker, defender) {
+      if (attacker.attackHitDone || performance.now() > attacker.attackUntil) return;
+
+      const total = attacker.attackType === 'kick' ? 420 : 320;
+      const elapsed = total - (attacker.attackUntil - performance.now());
+      const shouldLand = attacker.attackType === 'punch' ? elapsed > 110 : elapsed > 170;
+      if (!shouldLand) return;
+
+      const range = attacker.attackType === 'kick' ? 98 : 78;
+      const dmg = attacker.attackType === 'kick' ? 18 : 12;
+      const inFront = (defender.x - attacker.x) * (attacker.facing || 1) > -10;
+
+      if (distance(attacker, defender) <= range && inFront) {
+        hit(defender, dmg, `${attacker.name} landed a ${attacker.attackType}!`, attacker);
+        defender.knockback += attacker.attackType === 'kick' ? 4 * attacker.facing : 2.6 * attacker.facing;
+      } else if (attacker === player) {
+        say(`${attacker.name} ${attacker.attackType} missed.`);
+      }
+
+      attacker.attackHitDone = true;
+    }
+
+    function updatePlayer(dt) {
+      const now = performance.now();
+      if (player.hp <= 0) return;
+
+      let canMove = now > player.stunnedUntil && now > player.castUntil;
       player.vx = 0;
-      if (keys.has('a')) player.vx -= player.speed;
-      if (keys.has('d')) player.vx += player.speed;
 
-      if (keys.has('w') && player.y >= 360) {
-        player.vy = -player.jumpStrength;
+      if (now < player.abilityDashUntil) {
+        player.vx = player.abilityDashSpeed;
+        canMove = false;
       }
 
-      if (keys.has('s') && player.y < 360) {
-        player.vy += 0.55;
+      if (canMove) {
+        if (keys.has('a')) player.vx -= player.speed;
+        if (keys.has('d')) player.vx += player.speed;
+        if (keys.has('w') && player.y >= FLOOR_Y) player.vy = -player.jumpStrength;
+        if (keys.has('s') && player.y < FLOOR_Y) player.vy += 0.55;
       }
 
-      player.x += player.vx;
+      player.x += player.vx + player.knockback;
       player.y += player.vy;
+      player.knockback *= 0.86;
       player.vy += 0.5;
 
-      if (player.y > 360) {
-        player.y = 360;
+      if (player.y > FLOOR_Y) {
+        player.y = FLOOR_Y;
         player.vy = 0;
       }
 
       player.x = Math.max(40, Math.min(canvas.width - 40, player.x));
       if (player.vx !== 0) player.facing = Math.sign(player.vx);
+
+      if (Math.abs(player.vx) > 0.2 && player.y >= FLOOR_Y) player.walkCycle += dt * 0.019;
+      resolveAttackHit(player, enemy);
     }
 
-    function updateEnemy() {
-      if (enemy.hp <= 0) return;
+    function updateEnemy(dt) {
       const now = performance.now();
-      const gap = player.x - enemy.x;
-      enemy.x += Math.sign(gap) * Math.min(Math.abs(gap), enemy.speed);
-      enemy.facing = Math.sign(gap) || -1;
+      if (enemy.hp <= 0) return;
 
-      if (now > enemy.cooldownAt && distance(player, enemy) < 85 && player.hp > 0) {
-        const roll = Math.random();
-        if (roll > 0.55) {
-          hit(player, 11, 'CPU landed a jab.');
-        } else if (roll > 0.2) {
-          hit(player, 16, 'CPU smacked you with a kick.');
-        } else {
-          enemy.guardUntil = now + 800;
-          say('CPU raised a guard.');
+      if (now < enemy.stunnedUntil) {
+        enemy.vx = 0;
+      } else {
+        const gap = player.x - enemy.x;
+        const desired = Math.sign(gap) * Math.min(Math.abs(gap), enemy.speed);
+        enemy.vx = desired;
+
+        if (distance(player, enemy) > 64 && now > enemy.attackUntil) {
+          enemy.x += enemy.vx;
         }
-        enemy.cooldownAt = now + 750;
+
+        if (enemy.vx !== 0) enemy.facing = Math.sign(gap) || enemy.facing;
+
+        if (now > enemy.cooldownAt && distance(player, enemy) < 88 && player.hp > 0) {
+          const roll = Math.random();
+          if (roll > 0.55) {
+            startAttack(enemy, 'punch');
+          } else if (roll > 0.2) {
+            startAttack(enemy, 'kick');
+          } else {
+            enemy.guardUntil = now + 700;
+            say('CPU raised a guard.');
+          }
+          enemy.cooldownAt = now + 780;
+        }
+      }
+
+      enemy.x += enemy.knockback;
+      enemy.knockback *= 0.85;
+      enemy.x = Math.max(40, Math.min(canvas.width - 40, enemy.x));
+      if (Math.abs(enemy.vx) > 0.1) enemy.walkCycle += dt * 0.015;
+
+      resolveAttackHit(enemy, player);
+    }
+
+    function updateFx(dt) {
+      for (let i = fx.length - 1; i >= 0; i--) {
+        const p = fx[i];
+        p.life -= dt;
+
+        if (p.kind === 'projectile') {
+          p.x += p.vx;
+          if (p.owner === player && distance({ x: p.x }, enemy) < 28 && Math.abs(p.y - (enemy.y - 38)) < 44 && enemy.hp > 0) {
+            p.onHit(enemy);
+            p.life = 0;
+          }
+          if (p.owner === enemy && distance({ x: p.x }, player) < 28 && Math.abs(p.y - (player.y - 38)) < 44 && player.hp > 0) {
+            p.onHit(player);
+            p.life = 0;
+          }
+        }
+
+        if (p.life <= 0) fx.splice(i, 1);
       }
     }
 
@@ -362,22 +492,59 @@
       }
     }
 
+    function drawEffects() {
+      for (const p of fx) {
+        const alpha = Math.max(0, p.life / p.maxLife);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        if (p.kind === 'projectile') {
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (p.kind === 'ring') {
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius + (1 - alpha) * 34, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (p.kind === 'wave') {
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, p.radius + (1 - alpha) * 120, 12 + (1 - alpha) * 20, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+    }
+
     function drawStickman(f) {
-      const headR = 16;
-      const isAttacking = performance.now() < f.attackUntil;
-      const armSwing = isAttacking ? (f.attackType === 'kick' ? 25 : 40) : 12;
-      const legSwing = isAttacking && f.attackType === 'kick' ? 35 : 12;
+      const isPunching = performance.now() < f.attackUntil && f.attackType === 'punch';
+      const isKicking = performance.now() < f.attackUntil && f.attackType === 'kick';
       const guard = performance.now() < f.guardUntil;
+      const stunned = performance.now() < f.stunnedUntil;
+      const walking = Math.abs(f.vx) > 0.15 && f.y >= FLOOR_Y;
+
+      const walkSwing = walking ? Math.sin(f.walkCycle) * 20 : 0;
+      const punchProgress = isPunching ? 1 - (f.attackUntil - performance.now()) / 320 : 0;
+      const kickProgress = isKicking ? 1 - (f.attackUntil - performance.now()) / 420 : 0;
+
+      const punchArm = isPunching ? 18 + Math.sin(Math.min(Math.PI, punchProgress * Math.PI)) * 46 : 14 + walkSwing * 0.15;
+      const frontLeg = isKicking ? 12 + Math.sin(Math.min(Math.PI, kickProgress * Math.PI)) * 50 : 12 + walkSwing;
+      const backLeg = -16 - walkSwing;
 
       ctx.save();
       ctx.translate(f.x, f.y);
       ctx.scale(f.facing || 1, 1);
-      ctx.strokeStyle = f.color;
+      ctx.strokeStyle = stunned ? '#64748b' : f.color;
       ctx.lineWidth = 6;
       ctx.lineCap = 'round';
 
       ctx.beginPath();
-      ctx.arc(0, -66, headR, 0, Math.PI * 2);
+      ctx.arc(0, -66, 16, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.beginPath();
@@ -387,17 +554,25 @@
 
       ctx.beginPath();
       ctx.moveTo(0, -40);
-      ctx.lineTo(guard ? 8 : 20 + armSwing, guard ? -56 : -24);
+      ctx.lineTo(guard ? 8 : punchArm, guard ? -56 : -24);
       ctx.moveTo(0, -40);
-      ctx.lineTo(-20, -18);
+      ctx.lineTo(-20 - walkSwing * 0.15, -18);
       ctx.stroke();
 
       ctx.beginPath();
       ctx.moveTo(0, -10);
-      ctx.lineTo(legSwing, 24);
+      ctx.lineTo(frontLeg, 24);
       ctx.moveTo(0, -10);
-      ctx.lineTo(-16, 24);
+      ctx.lineTo(backLeg, 24);
       ctx.stroke();
+
+      if (performance.now() < f.invulnerableUntil) {
+        ctx.strokeStyle = 'rgba(251, 146, 60, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, -36, 30, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
       ctx.restore();
 
@@ -414,17 +589,21 @@
       ctx.fillStyle = '#f8fafc';
       ctx.font = 'bold 52px sans-serif';
       ctx.textAlign = 'center';
-      const won = player.hp > 0;
-      ctx.fillText(won ? 'YOU WIN' : 'YOU LOSE', canvas.width / 2, 210);
+      ctx.fillText(player.hp > 0 ? 'YOU WIN' : 'YOU LOSE', canvas.width / 2, 210);
       ctx.font = '22px sans-serif';
       ctx.fillText('Press Respawn to fight again.', canvas.width / 2, 260);
     }
 
-    function gameLoop() {
+    function gameLoop(ts) {
+      const dt = Math.min(40, ts - lastTs || 16);
+      lastTs = ts;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawGround();
-      updatePlayer();
-      updateEnemy();
+      updatePlayer(dt);
+      updateEnemy(dt);
+      updateFx(dt);
+      drawEffects();
       drawStickman(player);
       drawStickman(enemy);
       drawWinner();
@@ -446,8 +625,8 @@
       if (['w', 'a', 's', 'd', 'e', 'f', 'g'].includes(key)) event.preventDefault();
       keys.add(key);
 
-      if (key === 'f') doAttack('punch');
-      if (key === 'e') doAttack('kick');
+      if (key === 'f') startAttack(player, 'punch');
+      if (key === 'e') startAttack(player, 'kick');
       if (key === 'g') doAbility();
     });
 
