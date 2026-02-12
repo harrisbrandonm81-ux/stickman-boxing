@@ -452,12 +452,39 @@
     }
 
     function drawGround() {
-      ctx.fillStyle = '#0b1324';
-      ctx.fillRect(0, 405, canvas.width, 95);
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
-      ctx.lineWidth = 2;
-      for (let i = 0; i < canvas.width; i += 42) {
-        ctx.beginPath(); ctx.moveTo(i, 406); ctx.lineTo(i + 18, 500); ctx.stroke();
+      const horizon = 314;
+      const floorTop = 404;
+
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, floorTop);
+      skyGrad.addColorStop(0, '#253457');
+      skyGrad.addColorStop(1, '#152136');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, canvas.width, floorTop);
+
+      const floorGrad = ctx.createLinearGradient(0, floorTop, 0, canvas.height);
+      floorGrad.addColorStop(0, '#0f172a');
+      floorGrad.addColorStop(1, '#050b14');
+      ctx.fillStyle = floorGrad;
+      ctx.fillRect(0, floorTop, canvas.width, canvas.height - floorTop);
+
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.26)';
+      ctx.lineWidth = 1.2;
+      for (let i = -canvas.width; i <= canvas.width * 2; i += 48) {
+        ctx.beginPath();
+        ctx.moveTo(i, canvas.height);
+        ctx.lineTo(canvas.width / 2 + (i - canvas.width / 2) * 0.2, horizon);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+      for (let y = floorTop; y < canvas.height; y += 14) {
+        const t = (y - floorTop) / (canvas.height - floorTop);
+        const width = canvas.width * (0.2 + t * 0.8);
+        const x = (canvas.width - width) / 2;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + width, y);
+        ctx.stroke();
       }
     }
 
@@ -476,6 +503,13 @@
       }
     }
 
+    function drawSegment(a, b, c, d) {
+      ctx.beginPath();
+      ctx.moveTo(a, b);
+      ctx.lineTo(c, d);
+      ctx.stroke();
+    }
+
     function drawFighter(f) {
       const t = performance.now();
       const punching = t < f.attackUntil && f.attackType === 'punch';
@@ -483,29 +517,81 @@
       const guard = t < f.guardUntil;
       const stunned = t < f.stunnedUntil;
       const walking = Math.abs(f.vx) > 0.15 && f.y >= FLOOR_Y;
-      const walk = walking ? Math.sin(f.walkCycle) * 20 : 0;
-      const pProg = punching ? 1 - (f.attackUntil - t) / 320 : 0;
-      const kProg = kicking ? 1 - (f.attackUntil - t) / 420 : 0;
-      const arm = punching ? 18 + Math.sin(Math.min(Math.PI, pProg * Math.PI)) * 46 : 14 + walk * 0.15;
-      const legFront = kicking ? 12 + Math.sin(Math.min(Math.PI, kProg * Math.PI)) * 50 : 12 + walk;
-      const legBack = -16 - walk;
+
+      const walkPhase = f.walkCycle;
+      const walkA = walking ? Math.sin(walkPhase) : 0;
+      const walkB = walking ? Math.sin(walkPhase + Math.PI) : 0;
+
+      const punchProgress = punching ? Math.min(1, Math.max(0, 1 - (f.attackUntil - t) / 320)) : 0;
+      const kickProgress = kicking ? Math.min(1, Math.max(0, 1 - (f.attackUntil - t) / 420)) : 0;
+      const punchCurve = Math.sin(Math.PI * punchProgress);
+      const kickCurve = Math.sin(Math.PI * kickProgress);
+
+      const shoulderY = -40;
+      const hipY = -10;
+      const depth = 4;
+
+      const frontShoulder = { x: 2, y: shoulderY - 2 };
+      const backShoulder = { x: -2, y: shoulderY + 2 };
+      const frontHip = { x: 2, y: hipY - 1 };
+      const backHip = { x: -2, y: hipY + 1 };
+
+      const frontElbow = {
+        x: guard ? 10 : 14 + walkA * 6 + punchCurve * 18,
+        y: guard ? -56 : -30 + punchCurve * 2
+      };
+      const frontHand = {
+        x: guard ? 12 : 26 + walkA * 10 + punchCurve * 42,
+        y: guard ? -69 : -18 - punchCurve * 14
+      };
+
+      const backElbow = { x: -12 + walkB * 4, y: -32 };
+      const backHand = { x: -24 + walkB * 7, y: -20 };
+
+      const frontKnee = { x: 9 + walkB * 8 + kickCurve * 18, y: 8 + kickCurve * 2 };
+      const frontFoot = { x: 16 + walkB * 11 + kickCurve * 44, y: 24 - kickCurve * 6 };
+
+      const backKnee = { x: -8 + walkA * 8, y: 8 };
+      const backFoot = { x: -16 + walkA * 11, y: 24 };
 
       ctx.save();
       ctx.translate(f.x, f.y);
       ctx.scale(f.facing || 1, 1);
+
+      ctx.fillStyle = 'rgba(3, 8, 20, 0.35)';
+      ctx.beginPath();
+      ctx.ellipse(0, 26, 24 + Math.abs(walkA) * 8, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.65)';
+      ctx.lineWidth = 7;
+      ctx.lineCap = 'round';
+      ctx.translate(depth, depth * 0.6);
+      ctx.beginPath(); ctx.arc(0, -66, 16, 0, Math.PI * 2); ctx.stroke();
+      drawSegment(0, -50, 0, -10);
+      drawSegment(backShoulder.x, backShoulder.y, backElbow.x, backElbow.y);
+      drawSegment(backElbow.x, backElbow.y, backHand.x, backHand.y);
+      drawSegment(frontShoulder.x, frontShoulder.y, frontElbow.x, frontElbow.y);
+      drawSegment(frontElbow.x, frontElbow.y, frontHand.x, frontHand.y);
+      drawSegment(backHip.x, backHip.y, backKnee.x, backKnee.y);
+      drawSegment(backKnee.x, backKnee.y, backFoot.x, backFoot.y);
+      drawSegment(frontHip.x, frontHip.y, frontKnee.x, frontKnee.y);
+      drawSegment(frontKnee.x, frontKnee.y, frontFoot.x, frontFoot.y);
+      ctx.translate(-depth, -depth * 0.6);
+
       ctx.strokeStyle = stunned ? '#64748b' : f.color;
       ctx.lineWidth = 6;
-      ctx.lineCap = 'round';
       ctx.beginPath(); ctx.arc(0, -66, 16, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, -50); ctx.lineTo(0, -10); ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, -40); ctx.lineTo(guard ? 8 : arm, guard ? -56 : -24);
-      ctx.moveTo(0, -40); ctx.lineTo(-20 - walk * 0.15, -18);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, -10); ctx.lineTo(legFront, 24);
-      ctx.moveTo(0, -10); ctx.lineTo(legBack, 24);
-      ctx.stroke();
+      drawSegment(0, -50, 0, -10);
+      drawSegment(backShoulder.x, backShoulder.y, backElbow.x, backElbow.y);
+      drawSegment(backElbow.x, backElbow.y, backHand.x, backHand.y);
+      drawSegment(frontShoulder.x, frontShoulder.y, frontElbow.x, frontElbow.y);
+      drawSegment(frontElbow.x, frontElbow.y, frontHand.x, frontHand.y);
+      drawSegment(backHip.x, backHip.y, backKnee.x, backKnee.y);
+      drawSegment(backKnee.x, backKnee.y, backFoot.x, backFoot.y);
+      drawSegment(frontHip.x, frontHip.y, frontKnee.x, frontKnee.y);
+      drawSegment(frontKnee.x, frontKnee.y, frontFoot.x, frontFoot.y);
+
       ctx.restore();
 
       ctx.fillStyle = '#e2e8f0';
