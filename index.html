@@ -9,26 +9,21 @@
       color-scheme: dark;
       --bg: #0d1220;
       --panel: #1a2238;
-      --accent: #2dd4bf;
-      --text: #dbeafe;
+      --accent: #f59e0b;
+      --text: #e2e8f0;
       --muted: #94a3b8;
-      --danger: #f43f5e;
     }
-
     * { box-sizing: border-box; font-family: Inter, system-ui, sans-serif; }
-
     body {
       margin: 0;
       min-height: 100vh;
-      background: radial-gradient(circle at top, #16213f, var(--bg));
+      background: radial-gradient(circle at top, #1c2748, #0d1220);
       color: var(--text);
       display: grid;
       place-items: center;
-      padding: 24px;
+      padding: 20px;
     }
-
-    .game-shell { width: min(980px, 100%); display: grid; gap: 16px; }
-
+    .game-shell { width: min(980px, 100%); display: grid; gap: 14px; }
     .hud {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -37,39 +32,23 @@
       background: rgba(26, 34, 56, 0.9);
       border: 1px solid rgba(148, 163, 184, 0.25);
       border-radius: 14px;
-      padding: 14px 16px;
+      padding: 12px 14px;
     }
-
-    .controls, .stats {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
-
-    .panel-chip {
-      background: #0b1324;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 6px 8px;
-    }
-
+    .controls, .stats { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--muted); font-size: 0.9rem; }
+    .panel-chip { background: #0b1324; border: 1px solid #334155; border-radius: 8px; padding: 6px 8px; }
     kbd {
       background: #0b1324;
       border: 1px solid #334155;
       border-bottom-width: 3px;
       border-radius: 6px;
       color: var(--text);
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 700;
-      min-width: 24px;
+      min-width: 22px;
       text-align: center;
-      padding: 3px 7px;
+      padding: 3px 6px;
       display: inline-block;
     }
-
     button, select, input[type='range'] {
       background: #0b1324;
       color: var(--text);
@@ -78,18 +57,17 @@
       padding: 8px 10px;
       font-size: 0.9rem;
     }
-
     button { cursor: pointer; border-color: #1d4ed8; background: linear-gradient(180deg, #1d4ed8, #1e3a8a); }
     button:hover { filter: brightness(1.08); }
+    .danger { border-color: #be123c; background: linear-gradient(180deg, #e11d48, #9f1239); }
 
     .arena-wrap {
       background: rgba(26, 34, 56, 0.85);
       border: 1px solid rgba(148, 163, 184, 0.25);
       border-radius: 14px;
-      padding: 12px;
+      padding: 10px;
       position: relative;
     }
-
     canvas {
       width: 100%;
       height: auto;
@@ -97,19 +75,16 @@
       background: linear-gradient(180deg, #1e293b 0%, #0f172a 65%, #081018 100%);
       display: block;
     }
-
-    .log { color: var(--accent); font-weight: 600; min-height: 1.4rem; text-align: right; }
-
+    .log { color: #2dd4bf; font-weight: 600; min-height: 1.3rem; text-align: right; }
     .hp-bar {
       height: 10px;
-      width: 160px;
+      width: 150px;
       background: #111827;
       border-radius: 999px;
       overflow: hidden;
       border: 1px solid #334155;
       position: relative;
     }
-
     .hp-fill {
       position: absolute;
       inset: 0 auto 0 0;
@@ -120,41 +95,61 @@
 
     .overlay {
       position: absolute;
-      inset: 12px;
+      inset: 10px;
       border-radius: 10px;
-      background: rgba(2, 6, 23, 0.84);
+      background: rgba(0, 0, 0, 0.6);
       display: grid;
       place-items: center;
-      padding: 24px;
-    }
-
-    .menu-card {
-      width: min(540px, 100%);
-      background: rgba(15, 23, 42, 0.94);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      border-radius: 16px;
       padding: 20px;
-      display: grid;
-      gap: 14px;
+      backdrop-filter: blur(1px);
     }
-
-    .menu-title { font-size: 1.8rem; margin: 0; }
-    .menu-sub { margin: 0; color: var(--muted); }
-    .menu-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-    .settings-group { display: grid; gap: 8px; }
+    .menu-card {
+      width: min(620px, 100%);
+      background: linear-gradient(180deg, rgba(182, 191, 157, 0.95), rgba(68, 83, 63, 0.95));
+      border: 2px solid rgba(255,255,255,0.25);
+      border-radius: 14px;
+      padding: 22px;
+      color: #0f172a;
+      box-shadow: 0 20px 38px rgba(0,0,0,0.45);
+      display: grid;
+      gap: 12px;
+    }
+    .menu-title {
+      margin: 0;
+      text-align: center;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      color: #f97316;
+      letter-spacing: 1px;
+      text-shadow: 0 3px 0 #111827;
+      font-weight: 900;
+    }
+    .menu-sub { margin: 0; text-align: center; color: #1f2937; font-weight: 600; }
+    .menu-list { display: grid; gap: 10px; justify-items: center; }
+    .menu-btn {
+      width: min(360px, 100%);
+      background: linear-gradient(180deg, #f8fafc, #d1d5db);
+      color: #0f172a;
+      border: 1px solid #6b7280;
+      border-radius: 4px;
+      padding: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .menu-btn:hover { filter: brightness(1.05); }
+    .small { color: #111827; font-size: 0.9rem; text-align: center; }
     .hidden { display: none !important; }
-    .small { color: var(--muted); font-size: 0.86rem; }
   </style>
 </head>
 <body>
   <main class="game-shell">
     <section class="hud">
       <div class="controls">
-        <span class="panel-chip"><strong>P1:</strong> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>F</kbd> punch, <kbd>E</kbd> kick, <kbd>G</kbd> ability</span>
-        <span id="p2-controls" class="panel-chip hidden"><strong>P2:</strong> <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move, <kbd>/</kbd> punch, <kbd>.</kbd> kick, <kbd>,</kbd> ability</span>
-        <label class="panel-chip"><strong>P1 Stickman:</strong> <select id="character-select"></select></label>
-        <label id="p2-select-wrap" class="panel-chip hidden"><strong>P2 Stickman:</strong> <select id="character-select-p2"></select></label>
+        <span class="panel-chip"><strong>P1:</strong> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move <kbd>F</kbd> punch <kbd>E</kbd> kick <kbd>G</kbd> ability</span>
+        <span id="p2-controls" class="panel-chip hidden"><strong>P2:</strong> <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> <kbd>/</kbd> punch <kbd>.</kbd> kick <kbd>,</kbd> ability</span>
+        <label class="panel-chip"><strong>P1:</strong> <select id="character-select"></select></label>
+        <label id="p2-select-wrap" class="panel-chip hidden"><strong>P2:</strong> <select id="character-select-p2"></select></label>
         <button id="respawn-btn" type="button">Respawn</button>
+        <button id="menu-btn-live" type="button" class="danger">Main Menu</button>
       </div>
       <div class="stats">
         <span id="p1-label">Player 1</span><div class="hp-bar"><div id="player-hp" class="hp-fill"></div></div>
@@ -163,93 +158,93 @@
     </section>
 
     <section class="arena-wrap">
-      <canvas id="arena" width="940" height="500" aria-label="Stickman fighting arena"></canvas>
+      <canvas id="arena" width="940" height="500"></canvas>
 
       <div id="menu-overlay" class="overlay">
-        <div class="menu-card" id="main-menu">
-          <h1 class="menu-title">Stickman Arena</h1>
-          <p class="menu-sub">Pick a mode and start fighting.</p>
-          <div class="menu-row">
-            <button id="btn-one-player" type="button">Start 1 Player (vs CPU)</button>
-            <button id="btn-two-player" type="button">Start 2 Player (PvP)</button>
-            <button id="btn-settings" type="button">Settings</button>
+        <div id="main-menu" class="menu-card">
+          <h1 class="menu-title">Main Menu</h1>
+          <p class="menu-sub">Choose an option to begin.</p>
+          <div class="menu-list">
+            <button id="btn-start" class="menu-btn" type="button">Start</button>
+            <button id="btn-options" class="menu-btn" type="button">Options</button>
+            <button id="btn-credits" class="menu-btn" type="button">Credits</button>
+            <button id="btn-quit" class="menu-btn" type="button">Quit</button>
           </div>
-          <p class="small">You can return to menu anytime with the Menu button in settings panel.</p>
         </div>
 
-        <div class="menu-card hidden" id="settings-menu">
-          <h2 class="menu-title">Settings</h2>
-          <div class="settings-group">
-            <label>Starting HP: <span id="hp-value">100</span>
-              <input id="hp-slider" type="range" min="60" max="180" step="10" value="100" />
-            </label>
-            <label>CPU Difficulty (1P): <span id="cpu-value">Normal</span>
-              <input id="cpu-slider" type="range" min="1" max="3" step="1" value="2" />
-            </label>
-            <label>Round Timer (seconds): <span id="timer-value">99</span>
-              <input id="timer-slider" type="range" min="30" max="150" step="1" value="99" />
-            </label>
+        <div id="mode-menu" class="menu-card hidden">
+          <h1 class="menu-title">Select Mode</h1>
+          <div class="menu-list">
+            <button id="btn-one-player" class="menu-btn" type="button">1 Player (vs CPU)</button>
+            <button id="btn-two-player" class="menu-btn" type="button">2 Player (PvP)</button>
+            <button id="btn-back-main" class="menu-btn" type="button">Back</button>
           </div>
-          <div class="menu-row">
-            <button id="btn-back" type="button">Back</button>
-            <button id="btn-menu" type="button">Main Menu</button>
-          </div>
+        </div>
+
+        <div id="settings-menu" class="menu-card hidden">
+          <h1 class="menu-title">Options</h1>
+          <label>Starting HP: <span id="hp-value">100</span>
+            <input id="hp-slider" type="range" min="60" max="180" step="10" value="100">
+          </label>
+          <label>CPU Difficulty: <span id="cpu-value">Normal</span>
+            <input id="cpu-slider" type="range" min="1" max="3" step="1" value="2">
+          </label>
+          <label>Round Timer: <span id="timer-value">99</span>s
+            <input id="timer-slider" type="range" min="30" max="150" step="1" value="99">
+          </label>
+          <div class="menu-list"><button id="btn-back-options" class="menu-btn" type="button">Back</button></div>
+        </div>
+
+        <div id="credits-menu" class="menu-card hidden">
+          <h1 class="menu-title">Credits</h1>
+          <p class="small">Stickman Arena by you + Codex.</p>
+          <p class="small">Controls and combat tuned for local keyboard play.</p>
+          <div class="menu-list"><button id="btn-back-credits" class="menu-btn" type="button">Back</button></div>
+        </div>
+
+        <div id="quit-menu" class="menu-card hidden">
+          <h1 class="menu-title">Quit</h1>
+          <p class="small">You can close this tab/app now.</p>
+          <div class="menu-list"><button id="btn-back-quit" class="menu-btn" type="button">Back</button></div>
         </div>
       </div>
     </section>
 
-    <div id="log" class="log">Open the menu to start.</div>
+    <div id="log" class="log">Open menu to start a match.</div>
   </main>
 
   <script>
     const canvas = document.getElementById('arena');
     const ctx = canvas.getContext('2d');
     const logEl = document.getElementById('log');
-
     const characterSelect = document.getElementById('character-select');
     const characterSelectP2 = document.getElementById('character-select-p2');
-    const p2SelectWrap = document.getElementById('p2-select-wrap');
     const p2Controls = document.getElementById('p2-controls');
-    const p1Label = document.getElementById('p1-label');
+    const p2SelectWrap = document.getElementById('p2-select-wrap');
     const p2Label = document.getElementById('p2-label');
     const respawnBtn = document.getElementById('respawn-btn');
-
+    const liveMenuBtn = document.getElementById('menu-btn-live');
     const playerHpBar = document.getElementById('player-hp');
     const enemyHpBar = document.getElementById('enemy-hp');
 
     const menuOverlay = document.getElementById('menu-overlay');
     const mainMenu = document.getElementById('main-menu');
+    const modeMenu = document.getElementById('mode-menu');
     const settingsMenu = document.getElementById('settings-menu');
-    const btnOnePlayer = document.getElementById('btn-one-player');
-    const btnTwoPlayer = document.getElementById('btn-two-player');
-    const btnSettings = document.getElementById('btn-settings');
-    const btnBack = document.getElementById('btn-back');
-    const btnMenu = document.getElementById('btn-menu');
-
-    const hpSlider = document.getElementById('hp-slider');
-    const cpuSlider = document.getElementById('cpu-slider');
-    const timerSlider = document.getElementById('timer-slider');
-    const hpValue = document.getElementById('hp-value');
-    const cpuValue = document.getElementById('cpu-value');
-    const timerValue = document.getElementById('timer-value');
+    const creditsMenu = document.getElementById('credits-menu');
+    const quitMenu = document.getElementById('quit-menu');
 
     const FLOOR_Y = 378;
-    const fx = [];
     const keys = new Set();
-
-    let mode = null; // 'cpu' | 'pvp'
-    let roundActive = false;
+    const fx = [];
     let player;
     let enemy;
-    let lastTs = performance.now();
+    let mode = null;
+    let roundActive = false;
     let roundEndsAt = 0;
+    let lastTs = performance.now();
 
-    const settings = {
-      startHp: 100,
-      cpuDifficulty: 2,
-      roundTime: 99
-    };
-
+    const settings = { startHp: 100, cpuDifficulty: 2, roundTime: 99 };
     const cpuSettings = {
       1: { speed: 1.9, react: 980, name: 'Easy' },
       2: { speed: 2.35, react: 730, name: 'Normal' },
@@ -257,147 +252,102 @@
     };
 
     const characters = [
-      {
-        name: 'Blaze',
-        color: '#f97316',
-        ability: {
-          name: 'Fire Dash', cooldown: 1600,
-          effect(self, target) {
-            const dir = self.facing || 1;
-            self.abilityDashUntil = performance.now() + 220;
-            self.abilityDashSpeed = 11 * dir;
-            self.invulnerableUntil = performance.now() + 220;
-            const inFront = (target.x - self.x) * dir > -12;
-            if (inFront && distance(self, target) < 180) {
-              hit(target, 28, `${self.name} landed Fire Dash!`, self);
-              target.knockback = 6 * dir;
-            } else {
-              say(`${self.name} dashed through flames.`);
-            }
-            fx.push({ kind: 'ring', x: self.x, y: self.y - 35, life: 260, maxLife: 260, radius: 16, color: '#fb923c' });
-          }
+      { name: 'Blaze', color: '#f97316', ability: { name: 'Fire Dash', cooldown: 1600, effect(self, target) {
+        const dir = self.facing || 1;
+        self.abilityDashUntil = performance.now() + 220;
+        self.abilityDashSpeed = 11 * dir;
+        self.invulnerableUntil = performance.now() + 220;
+        if ((target.x - self.x) * dir > -12 && Math.abs(target.x - self.x) < 180) {
+          hit(target, 28, `${self.name} landed Fire Dash!`, self);
+          target.knockback = 6 * dir;
         }
-      },
-      {
-        name: 'Volt',
-        color: '#22d3ee',
-        ability: {
-          name: 'Shock Bolt', cooldown: 1800,
-          effect(self) {
-            const dir = self.facing || 1;
-            self.castUntil = performance.now() + 260;
-            fx.push({
-              kind: 'projectile', owner: self, x: self.x + 28 * dir, y: self.y - 38, vx: 9.1 * dir,
-              life: 900, maxLife: 900, radius: 8, color: '#67e8f9',
-              onHit(victim) {
-                hit(victim, 24, `${self.name}'s Shock Bolt stunned!`, self);
-                victim.stunnedUntil = performance.now() + 700;
-              }
-            });
-            say(`${self.name} fired Shock Bolt.`);
-          }
+        fx.push({ kind: 'ring', x: self.x, y: self.y - 35, life: 260, maxLife: 260, radius: 16, color: '#fb923c' });
+      } } },
+      { name: 'Volt', color: '#22d3ee', ability: { name: 'Shock Bolt', cooldown: 1800, effect(self) {
+        const dir = self.facing || 1;
+        self.castUntil = performance.now() + 260;
+        fx.push({ kind: 'projectile', owner: self, x: self.x + 28 * dir, y: self.y - 38, vx: 9.1 * dir, life: 900, maxLife: 900, radius: 8, color: '#67e8f9',
+          onHit(victim) { hit(victim, 24, `${self.name}'s Shock Bolt stunned!`, self); victim.stunnedUntil = performance.now() + 700; }
+        });
+      } } },
+      { name: 'Stone', color: '#a3a3a3', ability: { name: 'Quake Slam', cooldown: 2400, effect(self, target) {
+        self.castUntil = performance.now() + 320;
+        self.guardUntil = performance.now() + 850;
+        if (Math.abs(self.x - target.x) < 210) {
+          hit(target, 30, `${self.name} hit Quake Slam!`, self);
+          target.knockback = 4.7 * Math.sign(target.x - self.x || 1);
         }
-      },
-      {
-        name: 'Stone',
-        color: '#a3a3a3',
-        ability: {
-          name: 'Quake Slam', cooldown: 2400,
-          effect(self, target) {
-            self.castUntil = performance.now() + 320;
-            self.guardUntil = performance.now() + 850;
-            if (distance(self, target) < 210) {
-              hit(target, 30, `${self.name} hit Quake Slam!`, self);
-              target.knockback = 4.7 * Math.sign(target.x - self.x || 1);
-            } else {
-              say(`${self.name} slammed, but was too far.`);
-            }
-            fx.push({ kind: 'wave', x: self.x, y: FLOOR_Y + 18, life: 380, maxLife: 380, radius: 12, color: '#cbd5e1' });
-          }
-        }
-      }
+        fx.push({ kind: 'wave', x: self.x, y: FLOOR_Y + 18, life: 380, maxLife: 380, radius: 12, color: '#cbd5e1' });
+      } } }
     ];
 
-    function say(msg) { logEl.textContent = msg; }
-    function distance(a, b) { return Math.abs(a.x - b.x); }
+    function say(t) { logEl.textContent = t; }
+    function showPanel(panel) {
+      for (const el of [mainMenu, modeMenu, settingsMenu, creditsMenu, quitMenu]) el.classList.add('hidden');
+      panel.classList.remove('hidden');
+    }
+    function openMainMenu() {
+      mode = null;
+      roundActive = false;
+      menuOverlay.classList.remove('hidden');
+      showPanel(mainMenu);
+      p2Controls.classList.add('hidden');
+      p2SelectWrap.classList.add('hidden');
+      p2Label.textContent = 'CPU';
+      say('Main menu opened.');
+    }
 
-    function createFighter(name, x, color, controls) {
+    function createFighter(profile, x, controls) {
       return {
-        name, x, y: FLOOR_Y, vx: 0, vy: 0, knockback: 0, speed: 3, hp: settings.startHp, maxHp: settings.startHp,
-        facing: x < canvas.width / 2 ? 1 : -1, color, controls,
+        name: profile.name, profile,
+        x, y: FLOOR_Y, vx: 0, vy: 0, knockback: 0, speed: 3,
+        hp: settings.startHp, maxHp: settings.startHp,
+        facing: x < canvas.width / 2 ? 1 : -1,
         attackUntil: 0, attackType: '', attackHitDone: false,
-        abilityReadyAt: 0, abilityDashUntil: 0, abilityDashSpeed: 0, castUntil: 0,
-        guardUntil: 0, stunnedUntil: 0, invulnerableUntil: 0, walkCycle: 0, cooldownAt: 0,
-        jumpStrength: 10
+        abilityReadyAt: 0, abilityDashUntil: 0, abilityDashSpeed: 0,
+        castUntil: 0, guardUntil: 0, stunnedUntil: 0, invulnerableUntil: 0,
+        walkCycle: 0, cooldownAt: 0, reactionMs: 700, controls,
+        color: profile.color
       };
     }
 
-    function populateCharacterSelects() {
+    function populateSelects() {
       characterSelect.innerHTML = '';
       characterSelectP2.innerHTML = '';
-      for (const fighter of characters) {
-        const label = `${fighter.name} (${fighter.ability.name})`;
-        characterSelect.add(new Option(label, fighter.name));
-        characterSelectP2.add(new Option(label, fighter.name));
+      for (const c of characters) {
+        const label = `${c.name} (${c.ability.name})`;
+        characterSelect.add(new Option(label, c.name));
+        characterSelectP2.add(new Option(label, c.name));
       }
       characterSelectP2.selectedIndex = 1;
     }
 
-    function getSelectedFighter(select) {
-      return characters[select.selectedIndex] || characters[0];
-    }
+    function selectedFrom(select) { return characters[select.selectedIndex] || characters[0]; }
 
-    function setHudByMode() {
-      const isPvp = mode === 'pvp';
-      p2Controls.classList.toggle('hidden', !isPvp);
-      p2SelectWrap.classList.toggle('hidden', !isPvp);
-      p2Label.textContent = isPvp ? 'Player 2' : 'CPU';
-    }
-
-    function startMatch(newMode) {
-      mode = newMode;
-      setHudByMode();
+    function startMatch(nextMode) {
+      mode = nextMode;
+      p2Controls.classList.toggle('hidden', nextMode !== 'pvp');
+      p2SelectWrap.classList.toggle('hidden', nextMode !== 'pvp');
+      p2Label.textContent = nextMode === 'pvp' ? 'Player 2' : 'CPU';
       resetGame();
       menuOverlay.classList.add('hidden');
       roundActive = true;
     }
 
     function resetGame() {
-      const p1Pick = getSelectedFighter(characterSelect);
-      player = createFighter(p1Pick.name, 160, p1Pick.color, {
-        left: 'a', right: 'd', up: 'w', down: 's', punch: 'f', kick: 'e', ability: 'g'
-      });
-      player.profile = p1Pick;
-
+      player = createFighter(selectedFrom(characterSelect), 160, { left: 'a', right: 'd', up: 'w', down: 's', punch: 'f', kick: 'e', ability: 'g' });
       if (mode === 'pvp') {
-        const p2Pick = getSelectedFighter(characterSelectP2);
-        enemy = createFighter(p2Pick.name, 780, p2Pick.color, {
-          left: 'arrowleft', right: 'arrowright', up: 'arrowup', down: 'arrowdown', punch: '/', kick: '.', ability: ','
-        });
-        enemy.profile = p2Pick;
+        enemy = createFighter(selectedFrom(characterSelectP2), 780, { left: 'arrowleft', right: 'arrowright', up: 'arrowup', down: 'arrowdown', punch: '/', kick: '.', ability: ',' });
       } else {
-        enemy = createFighter('CPU Brawler', 780, '#f43f5e', null);
-        enemy.profile = { ability: { name: 'Counter Guard', cooldown: 999999, effect() {} } };
+        enemy = createFighter({ name: 'CPU Brawler', color: '#f43f5e', ability: { name: 'Counter', cooldown: 999999, effect() {} } }, 780, null);
         const cpu = cpuSettings[settings.cpuDifficulty];
         enemy.speed = cpu.speed;
         enemy.reactionMs = cpu.react;
       }
-
-      roundEndsAt = performance.now() + settings.roundTime * 1000;
       fx.length = 0;
+      roundEndsAt = performance.now() + settings.roundTime * 1000;
       updateHpUI();
-      const vsText = mode === 'pvp' ? `${player.name} vs ${enemy.name}` : `${player.name} vs CPU (${cpuSettings[settings.cpuDifficulty].name})`;
-      say(`Fight! ${vsText}`);
-    }
-
-    function hit(target, amount, text, attacker) {
-      if (performance.now() < target.invulnerableUntil || target.hp <= 0) return;
-      const guarding = performance.now() < target.guardUntil;
-      const real = guarding ? Math.ceil(amount * 0.4) : amount;
-      target.hp = Math.max(0, target.hp - real);
-      if (attacker && target.hp > 0) target.facing = Math.sign(target.x - attacker.x) || target.facing;
-      say(guarding ? `${text} (guarded)` : text);
-      updateHpUI();
+      say(mode === 'pvp' ? 'Fight! Player vs Player.' : `Fight! Player vs CPU (${cpuSettings[settings.cpuDifficulty].name}).`);
     }
 
     function updateHpUI() {
@@ -405,66 +355,64 @@
       enemyHpBar.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
     }
 
-    function startAttack(fighter, type) {
-      const now = performance.now();
-      if (!roundActive || fighter.hp <= 0) return;
-      if (now < fighter.attackUntil || now < fighter.stunnedUntil || now < fighter.castUntil) return;
-      fighter.attackType = type;
-      fighter.attackHitDone = false;
-      fighter.attackUntil = now + (type === 'kick' ? 420 : 320);
+    function hit(target, amount, text, attacker) {
+      if (performance.now() < target.invulnerableUntil || target.hp <= 0) return;
+      const guarded = performance.now() < target.guardUntil;
+      target.hp = Math.max(0, target.hp - (guarded ? Math.ceil(amount * 0.4) : amount));
+      if (attacker && target.hp > 0) target.facing = Math.sign(target.x - attacker.x) || target.facing;
+      updateHpUI();
+      say(guarded ? `${text} (guarded)` : text);
     }
 
-    function doAbility(fighter, target) {
+    function startAttack(f, type) {
       const now = performance.now();
-      if (!roundActive || fighter.hp <= 0 || target.hp <= 0) return;
-      if (now < fighter.abilityReadyAt) {
-        const wait = ((fighter.abilityReadyAt - now) / 1000).toFixed(1);
-        if (fighter === player || mode === 'pvp') say(`${fighter.name} ability cooldown ${wait}s`);
-        return;
-      }
-      fighter.profile.ability.effect(fighter, target);
-      fighter.abilityReadyAt = now + fighter.profile.ability.cooldown;
+      if (!roundActive || f.hp <= 0 || now < f.attackUntil || now < f.stunnedUntil || now < f.castUntil) return;
+      f.attackType = type;
+      f.attackHitDone = false;
+      f.attackUntil = now + (type === 'kick' ? 420 : 320);
     }
 
-    function resolveAttackHit(attacker, defender) {
+    function doAbility(f, target) {
+      const now = performance.now();
+      if (!roundActive || f.hp <= 0 || target.hp <= 0 || now < f.abilityReadyAt) return;
+      f.profile.ability.effect(f, target);
+      f.abilityReadyAt = now + f.profile.ability.cooldown;
+    }
+
+    function resolveHit(attacker, defender) {
       if (attacker.attackHitDone || performance.now() > attacker.attackUntil) return;
       const total = attacker.attackType === 'kick' ? 420 : 320;
       const elapsed = total - (attacker.attackUntil - performance.now());
       if ((attacker.attackType === 'punch' && elapsed < 110) || (attacker.attackType === 'kick' && elapsed < 170)) return;
-
       const range = attacker.attackType === 'kick' ? 98 : 78;
       const dmg = attacker.attackType === 'kick' ? 18 : 12;
       const inFront = (defender.x - attacker.x) * (attacker.facing || 1) > -10;
-      if (distance(attacker, defender) <= range && inFront) {
+      if (Math.abs(attacker.x - defender.x) <= range && inFront) {
         hit(defender, dmg, `${attacker.name} landed ${attacker.attackType}!`, attacker);
-        defender.knockback += attacker.attackType === 'kick' ? 4 * attacker.facing : 2.5 * attacker.facing;
-      } else if (attacker === player || mode === 'pvp') {
-        say(`${attacker.name} missed ${attacker.attackType}.`);
+        defender.knockback += attacker.attackType === 'kick' ? 4 * attacker.facing : 2.4 * attacker.facing;
       }
       attacker.attackHitDone = true;
     }
 
-    function applyInput(fighter, dt) {
+    function applyInput(f, dt) {
       const now = performance.now();
-      fighter.vx = 0;
-      let canMove = now > fighter.stunnedUntil && now > fighter.castUntil;
-      if (now < fighter.abilityDashUntil) { fighter.vx = fighter.abilityDashSpeed; canMove = false; }
-
-      if (canMove) {
-        if (keys.has(fighter.controls.left)) fighter.vx -= fighter.speed;
-        if (keys.has(fighter.controls.right)) fighter.vx += fighter.speed;
-        if (keys.has(fighter.controls.up) && fighter.y >= FLOOR_Y) fighter.vy = -fighter.jumpStrength;
-        if (keys.has(fighter.controls.down) && fighter.y < FLOOR_Y) fighter.vy += 0.55;
+      f.vx = 0;
+      let movable = now > f.stunnedUntil && now > f.castUntil;
+      if (now < f.abilityDashUntil) { f.vx = f.abilityDashSpeed; movable = false; }
+      if (movable) {
+        if (keys.has(f.controls.left)) f.vx -= f.speed;
+        if (keys.has(f.controls.right)) f.vx += f.speed;
+        if (keys.has(f.controls.up) && f.y >= FLOOR_Y) f.vy = -10;
+        if (keys.has(f.controls.down) && f.y < FLOOR_Y) f.vy += 0.55;
       }
-
-      fighter.x += fighter.vx + fighter.knockback;
-      fighter.y += fighter.vy;
-      fighter.knockback *= 0.86;
-      fighter.vy += 0.5;
-      if (fighter.y > FLOOR_Y) { fighter.y = FLOOR_Y; fighter.vy = 0; }
-      fighter.x = Math.max(40, Math.min(canvas.width - 40, fighter.x));
-      if (fighter.vx !== 0) fighter.facing = Math.sign(fighter.vx);
-      if (Math.abs(fighter.vx) > 0.2 && fighter.y >= FLOOR_Y) fighter.walkCycle += dt * 0.019;
+      f.x += f.vx + f.knockback;
+      f.y += f.vy;
+      f.knockback *= 0.86;
+      f.vy += 0.5;
+      if (f.y > FLOOR_Y) { f.y = FLOOR_Y; f.vy = 0; }
+      f.x = Math.max(40, Math.min(canvas.width - 40, f.x));
+      if (f.vx !== 0) f.facing = Math.sign(f.vx);
+      if (Math.abs(f.vx) > 0.2 && f.y >= FLOOR_Y) f.walkCycle += dt * 0.019;
     }
 
     function updateCpu(dt) {
@@ -472,18 +420,15 @@
       if (enemy.hp <= 0 || now < enemy.stunnedUntil) return;
       const gap = player.x - enemy.x;
       enemy.vx = Math.sign(gap) * Math.min(Math.abs(gap), enemy.speed);
-      if (distance(player, enemy) > 62 && now > enemy.attackUntil) enemy.x += enemy.vx;
+      if (Math.abs(gap) > 62 && now > enemy.attackUntil) enemy.x += enemy.vx;
       if (enemy.vx !== 0) enemy.facing = Math.sign(gap) || enemy.facing;
-
-      if (now > enemy.cooldownAt && distance(player, enemy) < 94 && player.hp > 0) {
+      if (now > enemy.cooldownAt && Math.abs(gap) < 92 && player.hp > 0) {
         const roll = Math.random();
-        if (roll > 0.58) startAttack(enemy, 'punch');
-        else if (roll > 0.22) startAttack(enemy, 'kick');
-        else if (roll > 0.1) enemy.guardUntil = now + 700;
-        else doAbility(enemy, player);
+        if (roll > 0.57) startAttack(enemy, 'punch');
+        else if (roll > 0.2) startAttack(enemy, 'kick');
+        else enemy.guardUntil = now + 600;
         enemy.cooldownAt = now + enemy.reactionMs;
       }
-
       enemy.x += enemy.knockback;
       enemy.knockback *= 0.85;
       enemy.x = Math.max(40, Math.min(canvas.width - 40, enemy.x));
@@ -516,38 +461,34 @@
       }
     }
 
-    function drawEffects() {
+    function drawFx() {
       for (const p of fx) {
-        const alpha = Math.max(0, p.life / p.maxLife);
-        ctx.save(); ctx.globalAlpha = alpha;
+        const a = Math.max(0, p.life / p.maxLife);
+        ctx.save(); ctx.globalAlpha = a;
         if (p.kind === 'projectile') {
-          ctx.fillStyle = p.color;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
         } else if (p.kind === 'ring') {
-          ctx.strokeStyle = p.color; ctx.lineWidth = 4;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.radius + (1 - alpha) * 34, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = p.color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius + (1 - a) * 34, 0, Math.PI * 2); ctx.stroke();
         } else if (p.kind === 'wave') {
-          ctx.strokeStyle = p.color; ctx.lineWidth = 5;
-          ctx.beginPath(); ctx.ellipse(p.x, p.y, p.radius + (1 - alpha) * 120, 12 + (1 - alpha) * 20, 0, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = p.color; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.radius + (1 - a) * 120, 12 + (1 - a) * 20, 0, 0, Math.PI * 2); ctx.stroke();
         }
         ctx.restore();
       }
     }
 
-    function drawStickman(f) {
+    function drawFighter(f) {
       const t = performance.now();
-      const isPunching = t < f.attackUntil && f.attackType === 'punch';
-      const isKicking = t < f.attackUntil && f.attackType === 'kick';
+      const punching = t < f.attackUntil && f.attackType === 'punch';
+      const kicking = t < f.attackUntil && f.attackType === 'kick';
       const guard = t < f.guardUntil;
       const stunned = t < f.stunnedUntil;
       const walking = Math.abs(f.vx) > 0.15 && f.y >= FLOOR_Y;
-
-      const walkSwing = walking ? Math.sin(f.walkCycle) * 20 : 0;
-      const punchProgress = isPunching ? 1 - (f.attackUntil - t) / 320 : 0;
-      const kickProgress = isKicking ? 1 - (f.attackUntil - t) / 420 : 0;
-      const punchArm = isPunching ? 18 + Math.sin(Math.min(Math.PI, punchProgress * Math.PI)) * 46 : 14 + walkSwing * 0.15;
-      const frontLeg = isKicking ? 12 + Math.sin(Math.min(Math.PI, kickProgress * Math.PI)) * 50 : 12 + walkSwing;
-      const backLeg = -16 - walkSwing;
+      const walk = walking ? Math.sin(f.walkCycle) * 20 : 0;
+      const pProg = punching ? 1 - (f.attackUntil - t) / 320 : 0;
+      const kProg = kicking ? 1 - (f.attackUntil - t) / 420 : 0;
+      const arm = punching ? 18 + Math.sin(Math.min(Math.PI, pProg * Math.PI)) * 46 : 14 + walk * 0.15;
+      const legFront = kicking ? 12 + Math.sin(Math.min(Math.PI, kProg * Math.PI)) * 50 : 12 + walk;
+      const legBack = -16 - walk;
 
       ctx.save();
       ctx.translate(f.x, f.y);
@@ -555,25 +496,18 @@
       ctx.strokeStyle = stunned ? '#64748b' : f.color;
       ctx.lineWidth = 6;
       ctx.lineCap = 'round';
-
       ctx.beginPath(); ctx.arc(0, -66, 16, 0, Math.PI * 2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0, -50); ctx.lineTo(0, -10); ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(0, -40); ctx.lineTo(guard ? 8 : punchArm, guard ? -56 : -24);
-      ctx.moveTo(0, -40); ctx.lineTo(-20 - walkSwing * 0.15, -18);
+      ctx.moveTo(0, -40); ctx.lineTo(guard ? 8 : arm, guard ? -56 : -24);
+      ctx.moveTo(0, -40); ctx.lineTo(-20 - walk * 0.15, -18);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(0, -10); ctx.lineTo(frontLeg, 24);
-      ctx.moveTo(0, -10); ctx.lineTo(backLeg, 24);
+      ctx.moveTo(0, -10); ctx.lineTo(legFront, 24);
+      ctx.moveTo(0, -10); ctx.lineTo(legBack, 24);
       ctx.stroke();
-
-      if (t < f.invulnerableUntil) {
-        ctx.strokeStyle = 'rgba(251,146,60,0.8)';
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(0, -36, 30, 0, Math.PI * 2); ctx.stroke();
-      }
-
       ctx.restore();
+
       ctx.fillStyle = '#e2e8f0';
       ctx.font = '13px sans-serif';
       ctx.textAlign = 'center';
@@ -585,41 +519,30 @@
       const timeout = performance.now() > roundEndsAt;
       if (player.hp <= 0 || enemy.hp <= 0 || timeout) {
         roundActive = false;
-        let msg = '';
-        if (timeout) {
-          if (player.hp === enemy.hp) msg = 'Time up! Draw!';
-          else msg = player.hp > enemy.hp ? 'Time up! Player 1 wins!' : `${mode === 'pvp' ? 'Player 2' : 'CPU'} wins on health!`;
-        } else {
-          msg = player.hp > 0 ? 'Player 1 wins!' : `${mode === 'pvp' ? 'Player 2 wins!' : 'CPU wins!'}`;
-        }
-        say(msg + ' Press Respawn or open Main Menu.');
+        say(timeout ? 'Time up! Respawn or Main Menu.' : 'Round over! Respawn or Main Menu.');
       }
     }
 
-    function drawRoundText() {
+    function drawRoundInfo() {
       if (!mode) return;
-      const remain = Math.max(0, Math.ceil((roundEndsAt - performance.now()) / 1000));
+      const sec = Math.max(0, Math.ceil((roundEndsAt - performance.now()) / 1000));
       ctx.fillStyle = '#e2e8f0';
-      ctx.font = 'bold 26px sans-serif';
+      ctx.font = 'bold 25px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`Time: ${remain}`, canvas.width / 2, 36);
-
+      ctx.fillText(`Time: ${sec}`, canvas.width / 2, 36);
       if (!roundActive) {
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.74)';
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.72)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#f8fafc';
-        ctx.font = 'bold 52px sans-serif';
-        const winner = player.hp === enemy.hp ? 'DRAW' : (player.hp > enemy.hp ? 'PLAYER 1 WINS' : (mode === 'pvp' ? 'PLAYER 2 WINS' : 'CPU WINS'));
-        ctx.fillText(winner, canvas.width / 2, 230);
-        ctx.font = '22px sans-serif';
-        ctx.fillText('Respawn to rematch or Main Menu for mode select.', canvas.width / 2, 275);
+        ctx.font = 'bold 48px sans-serif';
+        const winner = player.hp === enemy.hp ? 'DRAW' : (player.hp > enemy.hp ? 'PLAYER 1 WINS' : mode === 'pvp' ? 'PLAYER 2 WINS' : 'CPU WINS');
+        ctx.fillText(winner, canvas.width / 2, 236);
       }
     }
 
     function gameLoop(ts) {
       const dt = Math.min(40, ts - lastTs || 16);
       lastTs = ts;
-
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawGround();
 
@@ -628,93 +551,66 @@
           applyInput(player, dt);
           if (mode === 'pvp') applyInput(enemy, dt);
           else updateCpu(dt);
-
-          resolveAttackHit(player, enemy);
-          resolveAttackHit(enemy, player);
+          resolveHit(player, enemy);
+          resolveHit(enemy, player);
           updateFx(dt);
           checkRoundEnd();
         }
-
-        drawEffects();
-        drawStickman(player);
-        drawStickman(enemy);
-        drawRoundText();
+        drawFx();
+        drawFighter(player);
+        drawFighter(enemy);
+        drawRoundInfo();
       }
-
       requestAnimationFrame(gameLoop);
     }
 
-    function showSettings(show) {
-      mainMenu.classList.toggle('hidden', show);
-      settingsMenu.classList.toggle('hidden', !show);
-    }
-
-    function openMenu() {
-      menuOverlay.classList.remove('hidden');
-      showSettings(false);
-      roundActive = false;
-      mode = null;
-      setHudByMode();
-      say('Choose a mode from main menu.');
-    }
-
-    function bindSettingsUi() {
-      hpValue.textContent = settings.startHp;
-      cpuValue.textContent = cpuSettings[settings.cpuDifficulty].name;
-      timerValue.textContent = settings.roundTime;
-
-      hpSlider.addEventListener('input', () => {
-        settings.startHp = Number(hpSlider.value);
-        hpValue.textContent = settings.startHp;
-      });
-
-      cpuSlider.addEventListener('input', () => {
-        settings.cpuDifficulty = Number(cpuSlider.value);
-        cpuValue.textContent = cpuSettings[settings.cpuDifficulty].name;
-      });
-
-      timerSlider.addEventListener('input', () => {
-        settings.roundTime = Number(timerSlider.value);
-        timerValue.textContent = settings.roundTime;
-      });
-    }
-
-    window.addEventListener('keydown', (event) => {
-      const key = event.key.toLowerCase();
-      const handled = ['w','a','s','d','e','f','g','arrowup','arrowdown','arrowleft','arrowright','/','.',','].includes(key);
-      if (handled) event.preventDefault();
-      keys.add(key);
-
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if (['w','a','s','d','e','f','g','arrowup','arrowdown','arrowleft','arrowright','/','.',','].includes(k)) e.preventDefault();
+      keys.add(k);
       if (!mode || !roundActive) return;
-
-      if (key === player.controls.punch) startAttack(player, 'punch');
-      if (key === player.controls.kick) startAttack(player, 'kick');
-      if (key === player.controls.ability) doAbility(player, enemy);
-
+      if (k === player.controls.punch) startAttack(player, 'punch');
+      if (k === player.controls.kick) startAttack(player, 'kick');
+      if (k === player.controls.ability) doAbility(player, enemy);
       if (mode === 'pvp') {
-        if (key === enemy.controls.punch) startAttack(enemy, 'punch');
-        if (key === enemy.controls.kick) startAttack(enemy, 'kick');
-        if (key === enemy.controls.ability) doAbility(enemy, player);
+        if (k === enemy.controls.punch) startAttack(enemy, 'punch');
+        if (k === enemy.controls.kick) startAttack(enemy, 'kick');
+        if (k === enemy.controls.ability) doAbility(enemy, player);
       }
     });
+    window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 
-    window.addEventListener('keyup', (event) => {
-      keys.delete(event.key.toLowerCase());
+    document.getElementById('btn-start').addEventListener('click', () => showPanel(modeMenu));
+    document.getElementById('btn-options').addEventListener('click', () => showPanel(settingsMenu));
+    document.getElementById('btn-credits').addEventListener('click', () => showPanel(creditsMenu));
+    document.getElementById('btn-quit').addEventListener('click', () => showPanel(quitMenu));
+    document.getElementById('btn-back-main').addEventListener('click', () => showPanel(mainMenu));
+    document.getElementById('btn-back-options').addEventListener('click', () => showPanel(mainMenu));
+    document.getElementById('btn-back-credits').addEventListener('click', () => showPanel(mainMenu));
+    document.getElementById('btn-back-quit').addEventListener('click', () => showPanel(mainMenu));
+    document.getElementById('btn-one-player').addEventListener('click', () => startMatch('cpu'));
+    document.getElementById('btn-two-player').addEventListener('click', () => startMatch('pvp'));
+
+    document.getElementById('hp-slider').addEventListener('input', (e) => {
+      settings.startHp = Number(e.target.value);
+      document.getElementById('hp-value').textContent = settings.startHp;
+    });
+    document.getElementById('cpu-slider').addEventListener('input', (e) => {
+      settings.cpuDifficulty = Number(e.target.value);
+      document.getElementById('cpu-value').textContent = cpuSettings[settings.cpuDifficulty].name;
+    });
+    document.getElementById('timer-slider').addEventListener('input', (e) => {
+      settings.roundTime = Number(e.target.value);
+      document.getElementById('timer-value').textContent = settings.roundTime;
     });
 
     characterSelect.addEventListener('change', () => { if (mode) resetGame(); });
     characterSelectP2.addEventListener('change', () => { if (mode === 'pvp') resetGame(); });
     respawnBtn.addEventListener('click', () => { if (mode) { roundActive = true; resetGame(); } });
+    liveMenuBtn.addEventListener('click', openMainMenu);
 
-    btnOnePlayer.addEventListener('click', () => startMatch('cpu'));
-    btnTwoPlayer.addEventListener('click', () => startMatch('pvp'));
-    btnSettings.addEventListener('click', () => showSettings(true));
-    btnBack.addEventListener('click', () => showSettings(false));
-    btnMenu.addEventListener('click', openMenu);
-
-    populateCharacterSelects();
-    bindSettingsUi();
-    openMenu();
+    populateSelects();
+    openMainMenu();
     requestAnimationFrame(gameLoop);
   </script>
 </body>
