@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Stickman Boxing Arena</title>
+  <title>Stickman Boxing Arena - Pro Mechanics</title>
   <style>
     :root {
       color-scheme: dark;
@@ -22,6 +22,7 @@
       display: grid;
       place-items: center;
       padding: 20px;
+      overflow: hidden;
     }
     .game-shell { width: min(980px, 100%); display: grid; gap: 14px; }
     .hud {
@@ -102,6 +103,7 @@
       place-items: center;
       padding: 20px;
       backdrop-filter: blur(1px);
+      z-index: 10;
     }
     .menu-card {
       width: min(620px, 100%);
@@ -144,7 +146,7 @@
   <main class="game-shell">
     <section class="hud">
       <div class="controls">
-        <span class="panel-chip"><strong>P1:</strong> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move <kbd>F</kbd> punch <kbd>E</kbd> kick <kbd>G</kbd> ability</span>
+        <span class="panel-chip"><strong>P1:</strong> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <kbd>F</kbd> punch <kbd>E</kbd> kick <kbd>G</kbd> ability</span>
         <span id="p2-controls" class="panel-chip hidden"><strong>P2:</strong> <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> <kbd>/</kbd> punch <kbd>.</kbd> kick <kbd>,</kbd> ability</span>
         <label class="panel-chip"><strong>P1:</strong> <select id="character-select"></select></label>
         <label id="p2-select-wrap" class="panel-chip hidden"><strong>P2:</strong> <select id="character-select-p2"></select></label>
@@ -197,14 +199,13 @@
 
         <div id="credits-menu" class="menu-card hidden">
           <h1 class="menu-title">Credits</h1>
-          <p class="small">Stickman Arena by you + Codex.</p>
-          <p class="small">Controls and combat tuned for local keyboard play.</p>
+          <p class="small">Stickman Arena Refined Mechanics</p>
           <div class="menu-list"><button id="btn-back-credits" class="menu-btn" type="button">Back</button></div>
         </div>
 
         <div id="quit-menu" class="menu-card hidden">
           <h1 class="menu-title">Quit</h1>
-          <p class="small">You can close this tab/app now.</p>
+          <p class="small">You can close this tab now.</p>
           <div class="menu-list"><button id="btn-back-quit" class="menu-btn" type="button">Back</button></div>
         </div>
       </div>
@@ -226,7 +227,6 @@
     const liveMenuBtn = document.getElementById('menu-btn-live');
     const playerHpBar = document.getElementById('player-hp');
     const enemyHpBar = document.getElementById('enemy-hp');
-
     const menuOverlay = document.getElementById('menu-overlay');
     const mainMenu = document.getElementById('main-menu');
     const modeMenu = document.getElementById('mode-menu');
@@ -234,48 +234,54 @@
     const creditsMenu = document.getElementById('credits-menu');
     const quitMenu = document.getElementById('quit-menu');
 
+    // --- GAME CONSTANTS ---
     const FLOOR_Y = 378;
+    const GRAVITY = 0.55;
+    const FALL_GRAVITY = 0.8; // Snappier falling
+    const FRICTION = 0.85;    // Ground friction
+    const ACCEL = 0.9;        // Movement weight
+    const JUMP_FORCE = -12;
+    const HIT_STOP_MS = 40;   // Freeze frame on impact
+    
     const keys = new Set();
     const fx = [];
-    let player;
-    let enemy;
+    let player, enemy;
     let mode = null;
     let roundActive = false;
     let roundEndsAt = 0;
     let lastTs = performance.now();
+    let hitStopUntil = 0;
 
     const settings = { startHp: 100, cpuDifficulty: 2, roundTime: 99 };
     const cpuSettings = {
-      1: { speed: 1.9, react: 980, name: 'Easy' },
-      2: { speed: 2.35, react: 730, name: 'Normal' },
-      3: { speed: 2.95, react: 500, name: 'Hard' }
+      1: { accel: 0.5, speed: 2, react: 900, name: 'Easy' },
+      2: { accel: 0.8, speed: 3, react: 600, name: 'Normal' },
+      3: { accel: 1.2, speed: 4.5, react: 350, name: 'Hard' }
     };
 
     const characters = [
       { name: 'Blaze', color: '#f97316', ability: { name: 'Fire Dash', cooldown: 1600, effect(self, target) {
         const dir = self.facing || 1;
         self.abilityDashUntil = performance.now() + 220;
-        self.abilityDashSpeed = 11 * dir;
+        self.abilityDashSpeed = 14 * dir;
         self.invulnerableUntil = performance.now() + 220;
         if ((target.x - self.x) * dir > -12 && Math.abs(target.x - self.x) < 180) {
-          hit(target, 28, `${self.name} landed Fire Dash!`, self);
-          target.knockback = 6 * dir;
+          triggerHit(target, 28, `${self.name} Fire Dash!`, self, 8 * dir);
         }
         fx.push({ kind: 'ring', x: self.x, y: self.y - 35, life: 260, maxLife: 260, radius: 16, color: '#fb923c' });
       } } },
       { name: 'Volt', color: '#22d3ee', ability: { name: 'Shock Bolt', cooldown: 1800, effect(self) {
         const dir = self.facing || 1;
         self.castUntil = performance.now() + 260;
-        fx.push({ kind: 'projectile', owner: self, x: self.x + 28 * dir, y: self.y - 38, vx: 9.1 * dir, life: 900, maxLife: 900, radius: 8, color: '#67e8f9',
-          onHit(victim) { hit(victim, 24, `${self.name}'s Shock Bolt stunned!`, self); victim.stunnedUntil = performance.now() + 700; }
+        fx.push({ kind: 'projectile', owner: self, x: self.x + 28 * dir, y: self.y - 38, vx: 10 * dir, life: 900, maxLife: 900, radius: 8, color: '#67e8f9',
+          onHit(victim) { triggerHit(victim, 24, `Shock Bolt!`, self, 2 * dir); victim.stunnedUntil = performance.now() + 700; }
         });
       } } },
       { name: 'Stone', color: '#a3a3a3', ability: { name: 'Quake Slam', cooldown: 2400, effect(self, target) {
         self.castUntil = performance.now() + 320;
         self.guardUntil = performance.now() + 850;
-        if (Math.abs(self.x - target.x) < 210) {
-          hit(target, 30, `${self.name} hit Quake Slam!`, self);
-          target.knockback = 4.7 * Math.sign(target.x - self.x || 1);
+        if (Math.abs(self.x - target.x) < 220) {
+          triggerHit(target, 30, `Quake Slam!`, self, 6 * Math.sign(target.x - self.x || 1));
         }
         fx.push({ kind: 'wave', x: self.x, y: FLOOR_Y + 18, life: 380, maxLife: 380, radius: 12, color: '#cbd5e1' });
       } } }
@@ -287,42 +293,37 @@
       panel.classList.remove('hidden');
     }
     function openMainMenu() {
-      mode = null;
-      roundActive = false;
+      mode = null; roundActive = false;
       menuOverlay.classList.remove('hidden');
       showPanel(mainMenu);
       p2Controls.classList.add('hidden');
       p2SelectWrap.classList.add('hidden');
       p2Label.textContent = 'CPU';
-      say('Main menu opened.');
     }
 
     function createFighter(profile, x, controls) {
       return {
         name: profile.name, profile,
-        x, y: FLOOR_Y, vx: 0, vy: 0, knockback: 0, speed: 3,
+        x, y: FLOOR_Y, vx: 0, vy: 0, knockback: 0, 
         hp: settings.startHp, maxHp: settings.startHp,
         facing: x < canvas.width / 2 ? 1 : -1,
         attackUntil: 0, attackType: '', attackHitDone: false,
         abilityReadyAt: 0, abilityDashUntil: 0, abilityDashSpeed: 0,
         castUntil: 0, guardUntil: 0, stunnedUntil: 0, invulnerableUntil: 0,
         walkCycle: 0, cooldownAt: 0, reactionMs: 700, controls,
-        color: profile.color
+        color: profile.color,
+        lastVy: 0, stretchX: 1, stretchY: 1
       };
     }
 
     function populateSelects() {
-      characterSelect.innerHTML = '';
-      characterSelectP2.innerHTML = '';
-      for (const c of characters) {
-        const label = `${c.name} (${c.ability.name})`;
-        characterSelect.add(new Option(label, c.name));
-        characterSelectP2.add(new Option(label, c.name));
-      }
+      characterSelect.innerHTML = characterSelectP2.innerHTML = '';
+      characters.forEach(c => {
+        characterSelect.add(new Option(`${c.name}`, c.name));
+        characterSelectP2.add(new Option(`${c.name}`, c.name));
+      });
       characterSelectP2.selectedIndex = 1;
     }
-
-    function selectedFrom(select) { return characters[select.selectedIndex] || characters[0]; }
 
     function startMatch(nextMode) {
       mode = nextMode;
@@ -335,19 +336,19 @@
     }
 
     function resetGame() {
-      player = createFighter(selectedFrom(characterSelect), 160, { left: 'a', right: 'd', up: 'w', down: 's', punch: 'f', kick: 'e', ability: 'g' });
+      player = createFighter(characters[characterSelect.selectedIndex], 160, { left: 'a', right: 'd', up: 'w', down: 's', punch: 'f', kick: 'e', ability: 'g' });
       if (mode === 'pvp') {
-        enemy = createFighter(selectedFrom(characterSelectP2), 780, { left: 'arrowleft', right: 'arrowright', up: 'arrowup', down: 'arrowdown', punch: '/', kick: '.', ability: ',' });
+        enemy = createFighter(characters[characterSelectP2.selectedIndex], 780, { left: 'arrowleft', right: 'arrowright', up: 'arrowup', down: 'arrowdown', punch: '/', kick: '.', ability: ',' });
       } else {
-        enemy = createFighter({ name: 'CPU Brawler', color: '#f43f5e', ability: { name: 'Counter', cooldown: 999999, effect() {} } }, 780, null);
+        enemy = createFighter({ name: 'CPU', color: '#f43f5e', ability: { name: 'None', cooldown: 9999, effect() {} } }, 780, null);
         const cpu = cpuSettings[settings.cpuDifficulty];
-        enemy.speed = cpu.speed;
         enemy.reactionMs = cpu.react;
+        enemy.cpuSpeed = cpu.speed;
+        enemy.cpuAccel = cpu.accel;
       }
       fx.length = 0;
       roundEndsAt = performance.now() + settings.roundTime * 1000;
       updateHpUI();
-      say(mode === 'pvp' ? 'Fight! Player vs Player.' : `Fight! Player vs CPU (${cpuSettings[settings.cpuDifficulty].name}).`);
     }
 
     function updateHpUI() {
@@ -355,345 +356,256 @@
       enemyHpBar.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
     }
 
-    function hit(target, amount, text, attacker) {
+    function triggerHit(target, amount, text, attacker, kb) {
       if (performance.now() < target.invulnerableUntil || target.hp <= 0) return;
       const guarded = performance.now() < target.guardUntil;
-      target.hp = Math.max(0, target.hp - (guarded ? Math.ceil(amount * 0.4) : amount));
-      if (attacker && target.hp > 0) target.facing = Math.sign(target.x - attacker.x) || target.facing;
+      target.hp = Math.max(0, target.hp - (guarded ? Math.ceil(amount * 0.3) : amount));
+      target.knockback = kb;
+      hitStopUntil = performance.now() + HIT_STOP_MS; // Mechanic Update: Hit Stop
       updateHpUI();
-      say(guarded ? `${text} (guarded)` : text);
+      say(guarded ? `${text} (blocked!)` : text);
+    }
+
+    function applyPhysics(f, dt) {
+      const now = performance.now();
+      let movable = now > f.stunnedUntil && now > f.castUntil;
+      
+      // Horizontal Logic
+      if (now < f.abilityDashUntil) {
+        f.vx = f.abilityDashSpeed;
+      } else if (movable && f.controls) {
+        if (keys.has(f.controls.left)) f.vx -= ACCEL;
+        if (keys.has(f.controls.right)) f.vx += ACCEL;
+        if (keys.has(f.controls.up) && f.y >= FLOOR_Y) f.vy = JUMP_FORCE;
+      }
+      
+      f.vx *= FRICTION;
+      f.x += f.vx + f.knockback;
+      f.knockback *= 0.85;
+
+      // Vertical Logic (Dynamic Gravity)
+      const curGrav = f.vy > 0 ? FALL_GRAVITY : GRAVITY;
+      f.vy += curGrav;
+      f.y += f.vy;
+
+      if (f.y > FLOOR_Y) {
+        // Landing Squash
+        if (f.vy > 2) { f.stretchX = 1.3; f.stretchY = 0.7; }
+        f.y = FLOOR_Y; f.vy = 0;
+      }
+
+      // Procedural Stretch calculation
+      if (f.y < FLOOR_Y) {
+        f.stretchY = 1 + Math.abs(f.vy) * 0.03;
+        f.stretchX = 1 / f.stretchY;
+      } else {
+        f.stretchX += (1 - f.stretchX) * 0.2;
+        f.stretchY += (1 - f.stretchY) * 0.2;
+      }
+
+      f.x = Math.max(40, Math.min(canvas.width - 40, f.x));
+      if (Math.abs(f.vx) > 0.5) {
+        f.facing = Math.sign(f.vx);
+        if (f.y >= FLOOR_Y) f.walkCycle += dt * 0.015;
+      }
+    }
+
+    function updateCpu(f, target, dt) {
+      const now = performance.now();
+      if (f.hp <= 0 || now < f.stunnedUntil) return;
+      const dist = target.x - f.x;
+      
+      if (Math.abs(dist) > 75) {
+        f.vx += Math.sign(dist) * f.cpuAccel;
+      }
+      
+      if (now > f.cooldownAt && Math.abs(dist) < 95) {
+        const r = Math.random();
+        if (r > 0.6) startAttack(f, 'punch');
+        else if (r > 0.3) startAttack(f, 'kick');
+        else f.guardUntil = now + 400;
+        f.cooldownAt = now + f.reactionMs;
+      }
+      applyPhysics(f, dt);
     }
 
     function startAttack(f, type) {
       const now = performance.now();
-      if (!roundActive || f.hp <= 0 || now < f.attackUntil || now < f.stunnedUntil || now < f.castUntil) return;
+      if (!roundActive || f.hp <= 0 || now < f.attackUntil || now < f.stunnedUntil) return;
       f.attackType = type;
       f.attackHitDone = false;
-      f.attackUntil = now + (type === 'kick' ? 420 : 320);
+      f.attackUntil = now + (type === 'kick' ? 450 : 300);
     }
 
-    function doAbility(f, target) {
-      const now = performance.now();
-      if (!roundActive || f.hp <= 0 || target.hp <= 0 || now < f.abilityReadyAt) return;
-      f.profile.ability.effect(f, target);
-      f.abilityReadyAt = now + f.profile.ability.cooldown;
-    }
+    function resolveCombat(a, b) {
+      if (a.attackHitDone || performance.now() > a.attackUntil) return;
+      const elapsed = (a.attackUntil - performance.now());
+      const window = a.attackType === 'kick' ? 200 : 150;
+      if (elapsed > window) return; // Haven't reached active frames
 
-    function resolveHit(attacker, defender) {
-      if (attacker.attackHitDone || performance.now() > attacker.attackUntil) return;
-      const total = attacker.attackType === 'kick' ? 420 : 320;
-      const elapsed = total - (attacker.attackUntil - performance.now());
-      if ((attacker.attackType === 'punch' && elapsed < 110) || (attacker.attackType === 'kick' && elapsed < 170)) return;
-      const range = attacker.attackType === 'kick' ? 98 : 78;
-      const dmg = attacker.attackType === 'kick' ? 18 : 12;
-      const inFront = (defender.x - attacker.x) * (attacker.facing || 1) > -10;
-      if (Math.abs(attacker.x - defender.x) <= range && inFront) {
-        hit(defender, dmg, `${attacker.name} landed ${attacker.attackType}!`, attacker);
-        defender.knockback += attacker.attackType === 'kick' ? 4 * attacker.facing : 2.4 * attacker.facing;
+      const range = a.attackType === 'kick' ? 90 : 70;
+      if (Math.abs(a.x - b.x) <= range && (b.x - a.x) * a.facing > -10) {
+        const dmg = a.attackType === 'kick' ? 15 : 10;
+        const kb = a.attackType === 'kick' ? 6 * a.facing : 3 * a.facing;
+        triggerHit(b, dmg, `${a.name} ${a.attackType}!`, a, kb);
+        a.attackHitDone = true;
       }
-      attacker.attackHitDone = true;
-    }
-
-    function applyInput(f, dt) {
-      const now = performance.now();
-      f.vx = 0;
-      let movable = now > f.stunnedUntil && now > f.castUntil;
-      if (now < f.abilityDashUntil) { f.vx = f.abilityDashSpeed; movable = false; }
-      if (movable) {
-        if (keys.has(f.controls.left)) f.vx -= f.speed;
-        if (keys.has(f.controls.right)) f.vx += f.speed;
-        if (keys.has(f.controls.up) && f.y >= FLOOR_Y) f.vy = -10;
-        if (keys.has(f.controls.down) && f.y < FLOOR_Y) f.vy += 0.55;
-      }
-      f.x += f.vx + f.knockback;
-      f.y += f.vy;
-      f.knockback *= 0.86;
-      f.vy += 0.5;
-      if (f.y > FLOOR_Y) { f.y = FLOOR_Y; f.vy = 0; }
-      f.x = Math.max(40, Math.min(canvas.width - 40, f.x));
-      if (f.vx !== 0) f.facing = Math.sign(f.vx);
-      if (Math.abs(f.vx) > 0.2 && f.y >= FLOOR_Y) f.walkCycle += dt * 0.019;
-    }
-
-    function updateCpu(dt) {
-      const now = performance.now();
-      if (enemy.hp <= 0 || now < enemy.stunnedUntil) return;
-      const gap = player.x - enemy.x;
-      enemy.vx = Math.sign(gap) * Math.min(Math.abs(gap), enemy.speed);
-      if (Math.abs(gap) > 62 && now > enemy.attackUntil) enemy.x += enemy.vx;
-      if (enemy.vx !== 0) enemy.facing = Math.sign(gap) || enemy.facing;
-      if (now > enemy.cooldownAt && Math.abs(gap) < 92 && player.hp > 0) {
-        const roll = Math.random();
-        if (roll > 0.57) startAttack(enemy, 'punch');
-        else if (roll > 0.2) startAttack(enemy, 'kick');
-        else enemy.guardUntil = now + 600;
-        enemy.cooldownAt = now + enemy.reactionMs;
-      }
-      enemy.x += enemy.knockback;
-      enemy.knockback *= 0.85;
-      enemy.x = Math.max(40, Math.min(canvas.width - 40, enemy.x));
-      if (Math.abs(enemy.vx) > 0.1) enemy.walkCycle += dt * 0.015;
-    }
-
-    function updateFx(dt) {
-      for (let i = fx.length - 1; i >= 0; i--) {
-        const p = fx[i];
-        p.life -= dt;
-        if (p.kind === 'projectile') {
-          p.x += p.vx;
-          const target = p.owner === player ? enemy : player;
-          if (target.hp > 0 && Math.abs(p.x - target.x) < 28 && Math.abs(p.y - (target.y - 38)) < 44) {
-            p.onHit(target);
-            p.life = 0;
-          }
-        }
-        if (p.life <= 0) fx.splice(i, 1);
-      }
-    }
-
-    function drawGround() {
-      const horizon = 314;
-      const floorTop = 404;
-
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, floorTop);
-      skyGrad.addColorStop(0, '#253457');
-      skyGrad.addColorStop(1, '#152136');
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, canvas.width, floorTop);
-
-      const floorGrad = ctx.createLinearGradient(0, floorTop, 0, canvas.height);
-      floorGrad.addColorStop(0, '#0f172a');
-      floorGrad.addColorStop(1, '#050b14');
-      ctx.fillStyle = floorGrad;
-      ctx.fillRect(0, floorTop, canvas.width, canvas.height - floorTop);
-
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.26)';
-      ctx.lineWidth = 1.2;
-      for (let i = -canvas.width; i <= canvas.width * 2; i += 48) {
-        ctx.beginPath();
-        ctx.moveTo(i, canvas.height);
-        ctx.lineTo(canvas.width / 2 + (i - canvas.width / 2) * 0.2, horizon);
-        ctx.stroke();
-      }
-
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
-      for (let y = floorTop; y < canvas.height; y += 14) {
-        const t = (y - floorTop) / (canvas.height - floorTop);
-        const width = canvas.width * (0.2 + t * 0.8);
-        const x = (canvas.width - width) / 2;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + width, y);
-        ctx.stroke();
-      }
-    }
-
-    function drawFx() {
-      for (const p of fx) {
-        const a = Math.max(0, p.life / p.maxLife);
-        ctx.save(); ctx.globalAlpha = a;
-        if (p.kind === 'projectile') {
-          ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
-        } else if (p.kind === 'ring') {
-          ctx.strokeStyle = p.color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius + (1 - a) * 34, 0, Math.PI * 2); ctx.stroke();
-        } else if (p.kind === 'wave') {
-          ctx.strokeStyle = p.color; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.radius + (1 - a) * 120, 12 + (1 - a) * 20, 0, 0, Math.PI * 2); ctx.stroke();
-        }
-        ctx.restore();
-      }
-    }
-
-    function drawSegment(a, b, c, d) {
-      ctx.beginPath();
-      ctx.moveTo(a, b);
-      ctx.lineTo(c, d);
-      ctx.stroke();
     }
 
     function drawFighter(f) {
       const t = performance.now();
       const punching = t < f.attackUntil && f.attackType === 'punch';
       const kicking = t < f.attackUntil && f.attackType === 'kick';
-      const guard = t < f.guardUntil;
-      const stunned = t < f.stunnedUntil;
-      const walking = Math.abs(f.vx) > 0.15 && f.y >= FLOOR_Y;
-
-      const walkPhase = f.walkCycle;
-      const walkA = walking ? Math.sin(walkPhase) : 0;
-      const walkB = walking ? Math.sin(walkPhase + Math.PI) : 0;
-
-      const punchProgress = punching ? Math.min(1, Math.max(0, 1 - (f.attackUntil - t) / 320)) : 0;
-      const kickProgress = kicking ? Math.min(1, Math.max(0, 1 - (f.attackUntil - t) / 420)) : 0;
-      const punchCurve = Math.sin(Math.PI * punchProgress);
-      const kickCurve = Math.sin(Math.PI * kickProgress);
-
-      const shoulderY = -40;
-      const hipY = -10;
-      const depth = 4;
-
-      const frontShoulder = { x: 2, y: shoulderY - 2 };
-      const backShoulder = { x: -2, y: shoulderY + 2 };
-      const frontHip = { x: 2, y: hipY - 1 };
-      const backHip = { x: -2, y: hipY + 1 };
-
-      const frontElbow = {
-        x: guard ? 10 : 14 + walkA * 6 + punchCurve * 18,
-        y: guard ? -56 : -30 + punchCurve * 2
-      };
-      const frontHand = {
-        x: guard ? 12 : 26 + walkA * 10 + punchCurve * 42,
-        y: guard ? -69 : -18 - punchCurve * 14
-      };
-
-      const backElbow = { x: -12 + walkB * 4, y: -32 };
-      const backHand = { x: -24 + walkB * 7, y: -20 };
-
-      const frontKnee = { x: 9 + walkB * 8 + kickCurve * 18, y: 8 + kickCurve * 2 };
-      const frontFoot = { x: 16 + walkB * 11 + kickCurve * 44, y: 24 - kickCurve * 6 };
-
-      const backKnee = { x: -8 + walkA * 8, y: 8 };
-      const backFoot = { x: -16 + walkA * 11, y: 24 };
+      const punchCurve = punching ? Math.sin(Math.PI * (1 - (f.attackUntil - t) / 300)) : 0;
+      const kickCurve = kicking ? Math.sin(Math.PI * (1 - (f.attackUntil - t) / 450)) : 0;
 
       ctx.save();
       ctx.translate(f.x, f.y);
-      ctx.scale(f.facing || 1, 1);
+      ctx.scale(f.facing * f.stretchX, f.stretchY);
 
-      ctx.fillStyle = 'rgba(3, 8, 20, 0.35)';
-      ctx.beginPath();
-      ctx.ellipse(0, 26, 24 + Math.abs(walkA) * 8, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath(); ctx.ellipse(0, 5, 25, 8, 0, 0, Math.PI*2); ctx.fill();
 
-      ctx.strokeStyle = 'rgba(15, 23, 42, 0.65)';
-      ctx.lineWidth = 7;
-      ctx.lineCap = 'round';
-      ctx.translate(depth, depth * 0.6);
-      ctx.beginPath(); ctx.arc(0, -66, 16, 0, Math.PI * 2); ctx.stroke();
-      drawSegment(0, -50, 0, -10);
-      drawSegment(backShoulder.x, backShoulder.y, backElbow.x, backElbow.y);
-      drawSegment(backElbow.x, backElbow.y, backHand.x, backHand.y);
-      drawSegment(frontShoulder.x, frontShoulder.y, frontElbow.x, frontElbow.y);
-      drawSegment(frontElbow.x, frontElbow.y, frontHand.x, frontHand.y);
-      drawSegment(backHip.x, backHip.y, backKnee.x, backKnee.y);
-      drawSegment(backKnee.x, backKnee.y, backFoot.x, backFoot.y);
-      drawSegment(frontHip.x, frontHip.y, frontKnee.x, frontKnee.y);
-      drawSegment(frontKnee.x, frontKnee.y, frontFoot.x, frontFoot.y);
-      ctx.translate(-depth, -depth * 0.6);
-
-      ctx.strokeStyle = stunned ? '#64748b' : f.color;
+      ctx.strokeStyle = f.hp <= 0 || t < f.stunnedUntil ? '#64748b' : f.color;
       ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.arc(0, -66, 16, 0, Math.PI * 2); ctx.stroke();
-      drawSegment(0, -50, 0, -10);
-      drawSegment(backShoulder.x, backShoulder.y, backElbow.x, backElbow.y);
-      drawSegment(backElbow.x, backElbow.y, backHand.x, backHand.y);
-      drawSegment(frontShoulder.x, frontShoulder.y, frontElbow.x, frontElbow.y);
-      drawSegment(frontElbow.x, frontElbow.y, frontHand.x, frontHand.y);
-      drawSegment(backHip.x, backHip.y, backKnee.x, backKnee.y);
-      drawSegment(backKnee.x, backKnee.y, backFoot.x, backFoot.y);
-      drawSegment(frontHip.x, frontHip.y, frontKnee.x, frontKnee.y);
-      drawSegment(frontKnee.x, frontKnee.y, frontFoot.x, frontFoot.y);
+      ctx.lineCap = 'round';
+
+      // Procedural Pose Logic
+      const walk = Math.sin(f.walkCycle) * 10;
+      const headY = -65;
+      const hipY = -10;
+
+      // Head
+      ctx.beginPath(); ctx.arc(0, headY, 15, 0, Math.PI*2); ctx.stroke();
+      // Torso
+      ctx.beginPath(); ctx.moveTo(0, headY + 15); ctx.lineTo(0, hipY); ctx.stroke();
+      
+      // Arms (Front)
+      const handX = 20 + (punchCurve * 45);
+      const handY = -35 - (punchCurve * 10);
+      ctx.beginPath(); ctx.moveTo(0, -45); ctx.lineTo(handX/2, handY); ctx.lineTo(handX, handY); ctx.stroke();
+
+      // Legs
+      const footX = walk + (kickCurve * 50);
+      const footY = 25 - (kickCurve * 15);
+      ctx.beginPath(); ctx.moveTo(0, hipY); ctx.lineTo(footX/2, 10); ctx.lineTo(footX, footY); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, hipY); ctx.lineTo(-walk, 25); ctx.stroke();
 
       ctx.restore();
-
-      ctx.fillStyle = '#e2e8f0';
-      ctx.font = '13px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(f.name, f.x, f.y - 95);
     }
 
-    function checkRoundEnd() {
-      if (!roundActive) return;
-      const timeout = performance.now() > roundEndsAt;
-      if (player.hp <= 0 || enemy.hp <= 0 || timeout) {
-        roundActive = false;
-        say(timeout ? 'Time up! Respawn or Main Menu.' : 'Round over! Respawn or Main Menu.');
+    // --- RENDER TOOLS ---
+    function drawGround() {
+      ctx.fillStyle = '#152136';
+      ctx.fillRect(0, FLOOR_Y + 5, canvas.width, canvas.height);
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      for(let i=0; i<canvas.width; i+=40) {
+        ctx.beginPath(); ctx.moveTo(i, FLOOR_Y+5); ctx.lineTo(i, canvas.height); ctx.stroke();
       }
     }
 
-    function drawRoundInfo() {
-      if (!mode) return;
-      const sec = Math.max(0, Math.ceil((roundEndsAt - performance.now()) / 1000));
-      ctx.fillStyle = '#e2e8f0';
-      ctx.font = 'bold 25px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`Time: ${sec}`, canvas.width / 2, 36);
-      if (!roundActive) {
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.72)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#f8fafc';
-        ctx.font = 'bold 48px sans-serif';
-        const winner = player.hp === enemy.hp ? 'DRAW' : (player.hp > enemy.hp ? 'PLAYER 1 WINS' : mode === 'pvp' ? 'PLAYER 2 WINS' : 'CPU WINS');
-        ctx.fillText(winner, canvas.width / 2, 236);
+    function updateFx(dt) {
+      for (let i = fx.length - 1; i >= 0; i--) {
+        const p = fx[i]; p.life -= dt;
+        if (p.kind === 'projectile') {
+          p.x += p.vx;
+          const target = p.owner === player ? enemy : player;
+          if (Math.abs(p.x - target.x) < 30 && Math.abs(p.y - (target.y - 40)) < 40) {
+            p.onHit(target); p.life = 0;
+          }
+        }
+        if (p.life <= 0) fx.splice(i, 1);
       }
+    }
+
+    function drawFx() {
+      fx.forEach(p => {
+        ctx.globalAlpha = p.life / p.maxLife;
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+      });
     }
 
     function gameLoop(ts) {
-      const dt = Math.min(40, ts - lastTs || 16);
+      const dt = ts - lastTs;
       lastTs = ts;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawGround();
 
-      if (mode) {
+      if (mode && performance.now() > hitStopUntil) {
         if (roundActive) {
-          applyInput(player, dt);
-          if (mode === 'pvp') applyInput(enemy, dt);
-          else updateCpu(dt);
-          resolveHit(player, enemy);
-          resolveHit(enemy, player);
+          if (mode === 'pvp') {
+            applyPhysics(player, dt);
+            applyPhysics(enemy, dt);
+          } else {
+            applyPhysics(player, dt);
+            updateCpu(enemy, player, dt);
+          }
+          resolveCombat(player, enemy);
+          resolveCombat(enemy, player);
           updateFx(dt);
-          checkRoundEnd();
+          if (player.hp <= 0 || enemy.hp <= 0 || ts > roundEndsAt) roundActive = false;
         }
+      }
+
+      if (mode) {
         drawFx();
         drawFighter(player);
         drawFighter(enemy);
-        drawRoundInfo();
+        
+        // HUD Timer
+        const sec = Math.ceil(Math.max(0, (roundEndsAt - ts)/1000));
+        ctx.fillStyle = "#fff"; ctx.font = "bold 20px Arial";
+        ctx.textAlign = "center"; ctx.fillText(sec, canvas.width/2, 30);
+
+        if (!roundActive) {
+          ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0,0,canvas.width,canvas.height);
+          ctx.fillStyle = "#fff"; ctx.font = "bold 40px Arial";
+          const msg = player.hp <= 0 ? "ENEMY WINS" : (enemy.hp <= 0 ? "PLAYER 1 WINS" : "TIME UP");
+          ctx.fillText(msg, canvas.width/2, canvas.height/2);
+        }
       }
+
       requestAnimationFrame(gameLoop);
     }
 
-    window.addEventListener('keydown', (e) => {
+    // --- EVENTS ---
+    window.addEventListener('keydown', e => {
       const k = e.key.toLowerCase();
-      if (['w','a','s','d','e','f','g','arrowup','arrowdown','arrowleft','arrowright','/','.',','].includes(k)) e.preventDefault();
       keys.add(k);
-      if (!mode || !roundActive) return;
+      if (!roundActive) return;
       if (k === player.controls.punch) startAttack(player, 'punch');
       if (k === player.controls.kick) startAttack(player, 'kick');
-      if (k === player.controls.ability) doAbility(player, enemy);
+      if (k === player.controls.ability) {
+        if (performance.now() > player.abilityReadyAt) {
+          player.profile.ability.effect(player, enemy);
+          player.abilityReadyAt = performance.now() + player.profile.ability.cooldown;
+        }
+      }
       if (mode === 'pvp') {
         if (k === enemy.controls.punch) startAttack(enemy, 'punch');
         if (k === enemy.controls.kick) startAttack(enemy, 'kick');
-        if (k === enemy.controls.ability) doAbility(enemy, player);
+        if (k === enemy.controls.ability) {
+          if (performance.now() > enemy.abilityReadyAt) {
+            enemy.profile.ability.effect(enemy, player);
+            enemy.abilityReadyAt = performance.now() + enemy.profile.ability.cooldown;
+          }
+        }
       }
     });
-    window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+    window.addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 
-    document.getElementById('btn-start').addEventListener('click', () => showPanel(modeMenu));
-    document.getElementById('btn-options').addEventListener('click', () => showPanel(settingsMenu));
-    document.getElementById('btn-credits').addEventListener('click', () => showPanel(creditsMenu));
-    document.getElementById('btn-quit').addEventListener('click', () => showPanel(quitMenu));
-    document.getElementById('btn-back-main').addEventListener('click', () => showPanel(mainMenu));
-    document.getElementById('btn-back-options').addEventListener('click', () => showPanel(mainMenu));
-    document.getElementById('btn-back-credits').addEventListener('click', () => showPanel(mainMenu));
-    document.getElementById('btn-back-quit').addEventListener('click', () => showPanel(mainMenu));
-    document.getElementById('btn-one-player').addEventListener('click', () => startMatch('cpu'));
-    document.getElementById('btn-two-player').addEventListener('click', () => startMatch('pvp'));
-
-    document.getElementById('hp-slider').addEventListener('input', (e) => {
-      settings.startHp = Number(e.target.value);
-      document.getElementById('hp-value').textContent = settings.startHp;
-    });
-    document.getElementById('cpu-slider').addEventListener('input', (e) => {
-      settings.cpuDifficulty = Number(e.target.value);
-      document.getElementById('cpu-value').textContent = cpuSettings[settings.cpuDifficulty].name;
-    });
-    document.getElementById('timer-slider').addEventListener('input', (e) => {
-      settings.roundTime = Number(e.target.value);
-      document.getElementById('timer-value').textContent = settings.roundTime;
-    });
-
-    characterSelect.addEventListener('change', () => { if (mode) resetGame(); });
-    characterSelectP2.addEventListener('change', () => { if (mode === 'pvp') resetGame(); });
-    respawnBtn.addEventListener('click', () => { if (mode) { roundActive = true; resetGame(); } });
-    liveMenuBtn.addEventListener('click', openMainMenu);
+    document.getElementById('btn-start').onclick = () => showPanel(modeMenu);
+    document.getElementById('btn-one-player').onclick = () => startMatch('cpu');
+    document.getElementById('btn-two-player').onclick = () => startMatch('pvp');
+    document.getElementById('respawn-btn').onclick = () => { if(mode) resetGame(); roundActive = true; };
+    document.getElementById('menu-btn-live').onclick = openMainMenu;
+    document.getElementById('btn-back-main').onclick = openMainMenu;
+    document.getElementById('btn-options').onclick = () => showPanel(settingsMenu);
+    document.getElementById('btn-back-options').onclick = openMainMenu;
 
     populateSelects();
     openMainMenu();
